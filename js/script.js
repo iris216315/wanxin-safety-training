@@ -3,27 +3,25 @@
  * 台州万鑫安全技术咨询有限公司
  * 安全培训报名网站 - 主逻辑
  * =============================================
+ *
+ * 数据存储：Supabase (PostgreSQL + Storage)
+ * 数据库：isgzgscaljosdsxatclo.supabase.co
  */
 
 (function () {
   'use strict';
 
   // =============================================
+  // Supabase 初始化
+  // =============================================
+  const SUPABASE_URL = 'https://isgzgscaljosdsxatclo.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_Bd3-2QXZ9doG_-6fzkAfeg_TzXSiCiV';
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // =============================================
   // 配置
   // =============================================
   const CONFIG = {
-    // API 地址：部署后端后修改为实际地址
-    // 当前自动判断：本地开发用 localhost，生产用部署地址
-    apiUrl: (() => {
-      // 部署后将此行改为后端真实地址，例如：
-      // return 'https://wanxin-api.onrender.com';
-      const host = window.location.hostname;
-      if (host === 'localhost' || host === '127.0.0.1') {
-        return 'http://localhost:3001';
-      }
-      // === 部署后请修改此处为你的后端地址 ===
-      return 'http://localhost:3001';
-    })(),
     maxFileSize: 10 * 1024 * 1024, // 10MB
     allowedImageTypes: ['image/jpeg', 'image/png'],
   };
@@ -80,13 +78,6 @@
     idBack: $('idBackError'),
   };
 
-  // 上传文件数据（Base64）
-  const uploadData = {
-    portrait: null,
-    idFront: null,
-    idBack: null,
-  };
-
   // =============================================
   // 验证规则
   // =============================================
@@ -118,7 +109,6 @@
       v = v.trim().toUpperCase();
       if (!v) return '请输入身份证号码';
       if (!/^\d{17}[\dX]$/.test(v)) return '身份证号码格式不正确，应为18位（末位可为X）';
-      // 验证出生日期
       const year = parseInt(v.substr(6, 4), 10);
       const month = parseInt(v.substr(10, 2), 10);
       const day = parseInt(v.substr(12, 2), 10);
@@ -225,7 +215,6 @@
         errorEls[field].classList.remove('visible');
       }
     }
-    // 输入框高亮
     const inputMap = {
       name: dom.name,
       idCard: dom.idCard,
@@ -248,7 +237,7 @@
     });
   }
 
-  /** Toast 提示（替代 alert） */
+  /** Toast 提示 */
   function showToast(message, duration) {
     duration = duration || 2500;
     const existing = document.querySelector('.toast');
@@ -264,7 +253,7 @@
     }, duration);
   }
 
-  /** 弹出确认框（模拟） */
+  /** 弹出确认框 */
   function showConfirm(message, onConfirm, onCancel) {
     if (window.confirm(message)) {
       if (onConfirm) onConfirm();
@@ -274,7 +263,7 @@
   }
 
   // =============================================
-  // 表单验证（完整验证）
+  // 表单验证
   // =============================================
   function validateForm() {
     let isValid = true;
@@ -297,7 +286,6 @@
       if (err) isValid = false;
     });
 
-    // 验证照片上传
     const uploadFields = [
       { key: 'portrait', file: dom.portraitInput.files[0], label: '电子免冠证件照' },
       { key: 'idFront', file: dom.idFrontInput.files[0], label: '身份证正面照片' },
@@ -340,7 +328,6 @@
       if (err && !firstErrorKey) firstErrorKey = key;
     }
 
-    // 照片
     const uploadFields = [
       { key: 'portrait', file: dom.portraitInput.files[0], label: '电子免冠证件照' },
       { key: 'idFront', file: dom.idFrontInput.files[0], label: '身份证正面照片' },
@@ -362,7 +349,6 @@
     const firstError = firstErrorKey || firstUploadErrorKey;
     if (firstError) {
       if (firstUploadErrorKey && !firstErrorKey) {
-        // 滚动到上传区域
         const uploadAreaMap = {
           portrait: dom.portraitArea,
           idFront: dom.idFrontArea,
@@ -395,24 +381,20 @@
   // 单字段实时验证
   // =============================================
   function setupFieldValidation() {
-    // 失焦验证
     dom.name.addEventListener('blur', () => showError('name', VALIDATORS.name(dom.name.value)));
     dom.idCard.addEventListener('blur', () => showError('idCard', VALIDATORS.idCard(dom.idCard.value)));
     dom.workUnit.addEventListener('blur', () => showError('workUnit', VALIDATORS.workUnit(dom.workUnit.value)));
     dom.creditCode.addEventListener('blur', () => showError('creditCode', VALIDATORS.creditCode(dom.creditCode.value)));
     dom.phone.addEventListener('blur', () => showError('phone', VALIDATORS.phone(dom.phone.value)));
 
-    // 输入时清除错误 + 格式化
     dom.name.addEventListener('input', () => {
       if (errorEls.name.classList.contains('visible')) showError('name', '');
     });
 
     dom.idCard.addEventListener('input', function () {
       if (errorEls.idCard.classList.contains('visible')) showError('idCard', '');
-      // 只允许数字和X
       this.value = this.value.replace(/[^0-9xX]/g, '');
       if (this.value.length > 18) this.value = this.value.slice(0, 18);
-      // 末位自动大写
       if (this.value.length === 18 && this.value[17].toUpperCase() === 'X') {
         this.value = this.value.slice(0, 17) + 'X';
       }
@@ -434,7 +416,6 @@
       if (this.value.length > 11) this.value = this.value.slice(0, 11);
     });
 
-    // 选择变更时清除错误
     dom.education.addEventListener('change', () => {
       if (errorEls.education.classList.contains('visible')) showError('education', '');
     });
@@ -442,7 +423,6 @@
       if (errorEls.street.classList.contains('visible')) showError('street', '');
     });
 
-    // 单选变更
     document.querySelectorAll('input[name="gender"]').forEach((el) => {
       el.addEventListener('change', () => {
         if (errorEls.gender.classList.contains('visible')) showError('gender', '');
@@ -459,7 +439,6 @@
   // 单选按钮样式增强
   // =============================================
   function setupRadioStyling() {
-    // 监听单选变化，添加 .checked 类
     document.querySelectorAll('.radio-item input[type="radio"]').forEach((radio) => {
       radio.addEventListener('change', function () {
         const group = this.closest('.radio-group');
@@ -486,7 +465,6 @@
         placeholderId: 'portraitPlaceholder',
         replaceBtn: 'portraitReplace',
         errorKey: 'portrait',
-        dataKey: 'portrait',
       },
       {
         input: dom.idFrontInput,
@@ -496,7 +474,6 @@
         placeholderId: 'idFrontPlaceholder',
         replaceBtn: 'idFrontReplace',
         errorKey: 'idFront',
-        dataKey: 'idFront',
       },
       {
         input: dom.idBackInput,
@@ -506,17 +483,14 @@
         placeholderId: 'idBackPlaceholder',
         replaceBtn: 'idBackReplace',
         errorKey: 'idBack',
-        dataKey: 'idBack',
       },
     ];
 
     uploadConfigs.forEach((cfg) => {
-      // 文件选择
       cfg.input.addEventListener('change', function () {
         handleFileSelect(this, cfg);
       });
 
-      // 拖拽上传
       cfg.area.addEventListener('dragover', function (e) {
         e.preventDefault();
         this.classList.add('dragover');
@@ -534,26 +508,21 @@
         }
       });
 
-      // 点击上传区域触发文件选择
       cfg.area.addEventListener('click', function (e) {
-        // 如果已经有文件且点击的不是重新上传按钮，不触发
         if (this.classList.contains('has-file') && !e.target.classList.contains('upload-replace')) {
           return;
         }
       });
 
-      // 重新上传按钮
       const replaceBtn = document.getElementById(cfg.replaceBtn);
       if (replaceBtn) {
         replaceBtn.addEventListener('click', function (e) {
           e.stopPropagation();
           resetUpload(cfg);
-          // 触发文件选择
           setTimeout(() => cfg.input.click(), 100);
         });
       }
 
-      // 点击预览图片放大
       cfg.image.addEventListener('click', function (e) {
         e.stopPropagation();
         if (this.src) {
@@ -569,7 +538,7 @@
     const file = input.files[0];
     if (!file) return;
 
-    const label = cfg.dataKey === 'portrait' ? '电子免冠证件照' : '身份证照片';
+    const label = cfg.errorKey === 'portrait' ? '电子免冠证件照' : '身份证照片';
     const err = VALIDATORS.file(file, label);
     if (err) {
       showError(cfg.errorKey, err);
@@ -586,7 +555,6 @@
       cfg.preview.style.display = 'flex';
       document.getElementById(cfg.placeholderId).style.display = 'none';
       cfg.area.classList.add('has-file');
-      uploadData[cfg.dataKey] = dataUrl;
     };
     reader.onerror = function () {
       showError(cfg.errorKey, '图片读取失败，请重新上传');
@@ -601,7 +569,53 @@
     cfg.preview.style.display = 'none';
     document.getElementById(cfg.placeholderId).style.display = 'flex';
     cfg.area.classList.remove('has-file');
-    uploadData[cfg.dataKey] = null;
+  }
+
+  // =============================================
+  // Supabase 数据操作
+  // =============================================
+
+  /** 生成报名编号（查询当天已有数量） */
+  async function generateRegNo() {
+    const now = new Date();
+    const dateStr = now.getFullYear()
+      + String(now.getMonth() + 1).padStart(2, '0')
+      + String(now.getDate()).padStart(2, '0');
+
+    const { count, error } = await supabase
+      .from('registrations')
+      .select('*', { count: 'exact', head: true })
+      .gte('created_at', now.toISOString().slice(0, 10) + 'T00:00:00Z');
+
+    if (error) {
+      console.warn('获取计数失败，使用备选方案:', error);
+    }
+
+    const seq = ((count || 0) + 1).toString().padStart(4, '0');
+    return `WX${dateStr}${seq}`;
+  }
+
+  /** 上传图片到 Supabase Storage */
+  async function uploadPhoto(file, folder, fileName) {
+    const filePath = `${folder}/${fileName}`;
+
+    const { error } = await supabase.storage
+      .from('registration-photos')
+      .upload(filePath, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (error) {
+      console.error('图片上传失败:', error);
+      throw new Error('照片上传失败，请重试');
+    }
+
+    const { data: urlData } = supabase.storage
+      .from('registration-photos')
+      .getPublicUrl(filePath);
+
+    return urlData.publicUrl;
   }
 
   // =============================================
@@ -614,57 +628,60 @@
 
     if (!validateAndScroll()) return;
 
-    // 收集数据
-    const formData = {
-      name: dom.name.value.trim(),
-      gender: getRadioValue('gender'),
-      education: dom.education.value,
-      personType: getRadioValue('personType'),
-      idCard: dom.idCard.value.trim().toUpperCase(),
-      workUnit: dom.workUnit.value.trim(),
-      creditCode: dom.creditCode.value.trim().toUpperCase(),
-      phone: dom.phone.value.trim(),
-      street: dom.street.value,
-      portrait: uploadData.portrait,
-      idFront: uploadData.idFront,
-      idBack: uploadData.idBack,
-      submitTime: new Date().toISOString(),
-    };
-
     // 加载状态
     dom.submitBtn.classList.add('loading');
     dom.submitBtn.disabled = true;
 
     try {
-      let result;
+      const now = new Date();
+      const regNo = await generateRegNo();
+      const randomSuffix = Math.random().toString(36).substring(2, 8);
 
-      if (CONFIG.apiUrl) {
-        // 远程提交
-        const response = await fetch(CONFIG.apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
-        });
-        if (!response.ok) throw new Error(`服务器响应异常 (${response.status})`);
-        result = await response.json();
-      } else {
-        // 本地存储模式
-        result = await saveToLocalStorage(formData);
+      // 1. 上传三张照片到 Supabase Storage（并行上传）
+      const [portraitUrl, idFrontUrl, idBackUrl] = await Promise.all([
+        uploadPhoto(dom.portraitInput.files[0], 'portrait', `${regNo}_${randomSuffix}`),
+        uploadPhoto(dom.idFrontInput.files[0], 'idfront', `${regNo}_${randomSuffix}`),
+        uploadPhoto(dom.idBackInput.files[0], 'idback', `${regNo}_${randomSuffix}`),
+      ]);
+
+      // 2. 写入数据库
+      const { error } = await supabase.from('registrations').insert({
+        registration_no: regNo,
+        name: dom.name.value.trim(),
+        gender: getRadioValue('gender'),
+        education: dom.education.value,
+        person_type: getRadioValue('personType'),
+        id_card: dom.idCard.value.trim().toUpperCase(),
+        work_unit: dom.workUnit.value.trim(),
+        credit_code: dom.creditCode.value.trim().toUpperCase(),
+        phone: dom.phone.value.trim(),
+        street: dom.street.value,
+        portrait_url: portraitUrl,
+        id_front_url: idFrontUrl,
+        id_back_url: idBackUrl,
+        submit_time: now.toISOString(),
+        status: 'pending',
+      });
+
+      if (error) {
+        console.error('数据库写入失败:', error);
+        // 尝试清理已上传的图片（静默）
+        supabase.storage.from('registration-photos').remove([
+          `portrait/${regNo}_${randomSuffix}`,
+          `idfront/${regNo}_${randomSuffix}`,
+          `idback/${regNo}_${randomSuffix}`,
+        ]).catch(() => {});
+
+        throw new Error('数据保存失败，请稍后重试');
       }
 
-      if (result.success) {
-        showSuccessModal();
-        dom.form.reset();
-        resetAllUploads();
-        clearAllErrors();
-        // 重置单选样式
-        document.querySelectorAll('.radio-item.checked').forEach((el) => el.classList.remove('checked'));
-      } else {
-        showToast('提交失败：' + (result.message || '未知错误'));
-      }
+      console.log(`✅ 报名成功: ${regNo}`);
+      showSuccessModal(regNo);
+      resetForm();
+
     } catch (err) {
-      console.error('提交出错:', err);
-      showToast('提交失败，请检查网络连接后重试');
+      console.error('❌ 提交出错:', err);
+      showToast(err.message || '提交失败，请检查网络连接后重试');
     } finally {
       dom.submitBtn.classList.remove('loading');
       dom.submitBtn.disabled = false;
@@ -672,62 +689,44 @@
   }
 
   // =============================================
-  // 本地存储
-  // =============================================
-  function saveToLocalStorage(formData) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        try {
-          const key = 'wx_training_registrations';
-          let records = [];
-          try {
-            const stored = localStorage.getItem(key);
-            if (stored) records = JSON.parse(stored);
-            if (!Array.isArray(records)) records = [];
-          } catch (e) { /* ignore */ }
-
-          // 生成报名编号
-          const now = new Date();
-          const regNo = 'WX' + now.getFullYear()
-            + String(now.getMonth() + 1).padStart(2, '0')
-            + String(now.getDate()).padStart(2, '0')
-            + String(records.length + 1).padStart(4, '0');
-
-          formData.registrationNo = regNo;
-
-          records.push(formData);
-          localStorage.setItem(key, JSON.stringify(records));
-
-          resolve({ success: true, registrationNo: regNo });
-        } catch (e) {
-          resolve({ success: false, message: '数据存储失败：' + e.message });
-        }
-      }, 800);
-    });
-  }
-
-  // =============================================
-  // 重置所有上传
+  // 重置表单
   // =============================================
   function resetAllUploads() {
     const configs = [
-      { placeholderId: 'portraitPlaceholder', preview: dom.portraitPreview, area: dom.portraitArea, input: dom.portraitInput, key: 'portrait' },
-      { placeholderId: 'idFrontPlaceholder', preview: dom.idFrontPreview, area: dom.idFrontArea, input: dom.idFrontInput, key: 'idFront' },
-      { placeholderId: 'idBackPlaceholder', preview: dom.idBackPreview, area: dom.idBackArea, input: dom.idBackInput, key: 'idBack' },
+      { placeholderId: 'portraitPlaceholder', preview: dom.portraitPreview, area: dom.portraitArea, input: dom.portraitInput },
+      { placeholderId: 'idFrontPlaceholder', preview: dom.idFrontPreview, area: dom.idFrontArea, input: dom.idFrontInput },
+      { placeholderId: 'idBackPlaceholder', preview: dom.idBackPreview, area: dom.idBackArea, input: dom.idBackInput },
     ];
     configs.forEach((c) => {
       c.input.value = '';
       c.preview.style.display = 'none';
       document.getElementById(c.placeholderId).style.display = 'flex';
       c.area.classList.remove('has-file');
-      uploadData[c.key] = null;
     });
+  }
+
+  function resetForm() {
+    dom.form.reset();
+    resetAllUploads();
+    clearAllErrors();
+    document.querySelectorAll('.radio-item.checked').forEach((el) => el.classList.remove('checked'));
   }
 
   // =============================================
   // 弹窗控制
   // =============================================
-  function showSuccessModal() {
+  function showSuccessModal(regNo) {
+    const modalBody = dom.successModal.querySelector('.modal-body');
+    if (regNo && modalBody) {
+      modalBody.innerHTML = `
+        <p>您的报名信息已成功提交。</p>
+        <p style="font-size:18px;font-weight:700;color:#1a73e8;margin:8px 0;">
+          报名编号：${regNo}
+        </p>
+        <p>我们会尽快与您联系确认。</p>
+        <p class="modal-info">如需修改信息，请联系工作人员。</p>
+      `;
+    }
     dom.successModal.classList.add('show');
   }
 
@@ -740,15 +739,12 @@
   }
 
   // =============================================
-  // 重置表单
+  // 重置表单事件
   // =============================================
   function handleReset(e) {
     if (e) e.preventDefault();
     showConfirm('确定要重新填写吗？已填写的内容将被清空。', () => {
-      dom.form.reset();
-      clearAllErrors();
-      resetAllUploads();
-      document.querySelectorAll('.radio-item.checked').forEach((el) => el.classList.remove('checked'));
+      resetForm();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   }
@@ -775,7 +771,6 @@
       if (e.target === this) hidePreviewModal();
     });
 
-    // ESC 关闭弹窗
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
         hideSuccessModal();
@@ -784,8 +779,7 @@
     });
 
     console.log('✅ 安全培训报名网站初始化完成');
-    console.log('📋 当前模式:', CONFIG.apiUrl ? '远程模式' : '本地模式（数据存储在浏览器中）');
-    console.log('💡 提示: 打开浏览器开发者工具 → Application → Local Storage 查看已提交数据');
+    console.log('📊 数据存储: Supabase (PostgreSQL + Storage)');
   }
 
   // 启动
