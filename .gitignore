@@ -13,3 +13,6 @@ backend/node_modules/
 backend/data/
 backend/uploads/
 backend/.env
+
+# Vercel Backend
+vercel-backend/node_modules/

@@ -1,0 +1,8 @@
+{
+  "name": "wanxin-safety-training-api",
+  "version": "1.0.0",
+  "description": "万鑫安全培训报名系统 - Vercel Serverless API",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0"
+  }
+}
