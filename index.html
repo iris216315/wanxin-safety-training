@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>安全培训报名 - 台州万鑫安全技术咨询有限公司</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="images/logo.jpg" type="image/jpeg">
+</head>
+<body>
+  <div class="container">
+
+    <!-- ===== 顶部横幅 ===== -->
+    <div class="header">
+      <div class="header-row">
+        <img class="logo" src="images/logo.jpg" alt="万鑫安全">
+        <div class="header-text">
+          <h1 class="header-title">台州安全培训报名系统</h1>
+          <p class="company">台州万鑫安全技术咨询有限公司</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 温馨提示 ===== -->
+    <div class="notice">
+      <span class="notice-icon">&#8505;</span>
+      <span>请如实填写以下信息，带 <em class="required">*</em> 为必填项</span>
+    </div>
+
+    <!-- ===== 报名表单 ===== -->
+    <form id="signupForm" novalidate>
+
+      <!-- ===== 基本信息 ===== -->
+      <div class="form-section">
+        <div class="section-title">
+          <span class="section-icon">&#128221;</span>
+          基本信息
+        </div>
+
+        <!-- 姓名 -->
+        <div class="form-group">
+          <label class="form-label">
+            姓名 <em class="required">*</em>
+          </label>
+          <input type="text" class="form-input" id="name" name="name"
+                 placeholder="请输入姓名" maxlength="30" required autocomplete="name">
+          <div class="error-msg" id="nameError"></div>
+        </div>
+
+        <!-- 性别 -->
+        <div class="form-group">
+          <label class="form-label">
+            性别 <em class="required">*</em>
+          </label>
+          <div class="radio-group" id="genderGroup">
+            <label class="radio-item" data-value="男">
+              <input type="radio" name="gender" value="男" required>
+              <span class="radio-custom"></span>
+              <span class="radio-text">男</span>
+            </label>
+            <label class="radio-item" data-value="女">
+              <input type="radio" name="gender" value="女" required>
+              <span class="radio-custom"></span>
+              <span class="radio-text">女</span>
+            </label>
+          </div>
+          <div class="error-msg" id="genderError"></div>
+        </div>
+
+        <!-- 学历 -->
+        <div class="form-group">
+          <label class="form-label">
+            学历 <em class="required">*</em>
+          </label>
+          <div class="select-wrapper">
+            <select class="form-select" id="education" name="education" required>
+              <option value="">请选择学历</option>
+              <option value="研究生">研究生</option>
+              <option value="本科">本科</option>
+              <option value="专科">专科</option>
+              <option value="高中或中职">高中或中职</option>
+              <option value="初中">初中</option>
+              <option value="小学">小学</option>
+            </select>
+            <span class="select-arrow">&#9662;</span>
+          </div>
+          <div class="error-msg" id="educationError"></div>
+        </div>
+
+        <!-- 人员类型 -->
+        <div class="form-group">
+          <label class="form-label">
+            人员类型 <em class="required">*</em>
+          </label>
+          <div class="radio-group" id="personTypeGroup">
+            <label class="radio-item" data-value="主要负责人">
+              <input type="radio" name="personType" value="主要负责人" required>
+              <span class="radio-custom"></span>
+              <span class="radio-text">主要负责人</span>
+            </label>
+            <label class="radio-item" data-value="安全管理员">
+              <input type="radio" name="personType" value="安全管理员" required>
+              <span class="radio-custom"></span>
+              <span class="radio-text">安全管理员</span>
+            </label>
+          </div>
+          <div class="error-msg" id="personTypeError"></div>
+        </div>
+      </div>
+
+      <!-- ===== 证件信息 ===== -->
+      <div class="form-section">
+        <div class="section-title">
+          <span class="section-icon">&#128203;</span>
+          证件信息
+        </div>
+
+        <!-- 身份证号码 -->
+        <div class="form-group">
+          <label class="form-label">
+            身份证号码 <em class="required">*</em>
+          </label>
+          <input type="text" class="form-input" id="idCard" name="idCard"
+                 placeholder="请输入18位身份证号码" maxlength="18" required autocomplete="off">
+          <div class="input-tip">身份证号码为18位（最后一位可为X）</div>
+          <div class="error-msg" id="idCardError"></div>
+        </div>
+
+        <!-- 工作单位 -->
+        <div class="form-group">
+          <label class="form-label">
+            工作单位 <em class="required">*</em>
+          </label>
+          <input type="text" class="form-input" id="workUnit" name="workUnit"
+                 placeholder="请按营业执照填写企业全称" maxlength="100" required autocomplete="organization">
+          <div class="input-tip">请按照企业营业执照上填写全称</div>
+          <div class="error-msg" id="workUnitError"></div>
+        </div>
+
+        <!-- 统一社会信用代码 -->
+        <div class="form-group">
+          <label class="form-label">
+            统一社会信用代码 <em class="required">*</em>
+          </label>
+          <input type="text" class="form-input" id="creditCode" name="creditCode"
+                 placeholder="请输入18位统一社会信用代码" maxlength="18" required autocomplete="off">
+          <div class="input-tip">请按照企业营业执照上填写，18位代码</div>
+          <div class="error-msg" id="creditCodeError"></div>
+        </div>
+      </div>
+
+      <!-- ===== 联系方式 ===== -->
+      <div class="form-section">
+        <div class="section-title">
+          <span class="section-icon">&#128222;</span>
+          联系方式
+        </div>
+
+        <!-- 联系电话 -->
+        <div class="form-group">
+          <label class="form-label">
+            联系电话 <em class="required">*</em>
+          </label>
+          <input type="tel" class="form-input" id="phone" name="phone"
+                 placeholder="请输入11位手机号码" maxlength="11" required autocomplete="tel">
+          <div class="error-msg" id="phoneError"></div>
+        </div>
+
+        <!-- 所属街道 -->
+        <div class="form-group">
+          <label class="form-label">
+            所属街道 <em class="required">*</em>
+          </label>
+          <div class="select-wrapper">
+            <select class="form-select" id="street" name="street" required>
+              <option value="">请选择所属街道</option>
+              <option value="洪家街道">洪家街道</option>
+              <option value="下陈街道">下陈街道</option>
+              <option value="海门街道">海门街道</option>
+              <option value="葭芷街道">葭芷街道</option>
+              <option value="白云街道">白云街道</option>
+              <option value="前所街道">前所街道</option>
+              <option value="章安街道">章安街道</option>
+            </select>
+            <span class="select-arrow">&#9662;</span>
+          </div>
+          <div class="error-msg" id="streetError"></div>
+        </div>
+      </div>
+
+      <!-- ===== 照片上传 ===== -->
+      <div class="form-section">
+        <div class="section-title">
+          <span class="section-icon">&#128247;</span>
+          照片上传
+        </div>
+
+        <!-- 电子免冠证件照 -->
+        <div class="form-group">
+          <label class="form-label">
+            电子免冠证件照 <em class="required">*</em>
+          </label>
+          <div class="upload-area" id="portraitArea">
+            <input type="file" class="upload-input" id="portraitInput"
+                   accept="image/jpeg,image/png,image/jpg" required>
+            <div class="upload-placeholder" id="portraitPlaceholder">
+              <span class="upload-icon">&#128100;</span>
+              <span class="upload-text">点击上传证件照</span>
+              <span class="upload-hint">支持 JPG/PNG 格式，规范证件照</span>
+            </div>
+            <div class="upload-preview" id="portraitPreview" style="display:none;">
+              <img id="portraitImage" alt="证件照预览">
+              <button type="button" class="upload-replace" id="portraitReplace">重新上传</button>
+            </div>
+          </div>
+          <div class="error-msg" id="portraitError"></div>
+        </div>
+
+        <!-- 身份证正面 -->
+        <div class="form-group">
+          <label class="form-label">
+            身份证正面照片 <em class="required">*</em>
+          </label>
+          <div class="upload-area" id="idFrontArea">
+            <input type="file" class="upload-input" id="idFrontInput"
+                   accept="image/jpeg,image/png,image/jpg" required>
+            <div class="upload-placeholder" id="idFrontPlaceholder">
+              <span class="upload-icon">&#128196;</span>
+              <span class="upload-text">点击上传身份证正面</span>
+              <span class="upload-hint">支持 JPG/PNG 格式</span>
+            </div>
+            <div class="upload-preview" id="idFrontPreview" style="display:none;">
+              <img id="idFrontImage" alt="身份证正面预览">
+              <button type="button" class="upload-replace" id="idFrontReplace">重新上传</button>
+            </div>
+          </div>
+          <div class="error-msg" id="idFrontError"></div>
+        </div>
+
+        <!-- 身份证反面 -->
+        <div class="form-group">
+          <label class="form-label">
+            身份证反面照片 <em class="required">*</em>
+          </label>
+          <div class="upload-area" id="idBackArea">
+            <input type="file" class="upload-input" id="idBackInput"
+                   accept="image/jpeg,image/png,image/jpg" required>
+            <div class="upload-placeholder" id="idBackPlaceholder">
+              <span class="upload-icon">&#128196;</span>
+              <span class="upload-text">点击上传身份证反面</span>
+              <span class="upload-hint">支持 JPG/PNG 格式</span>
+            </div>
+            <div class="upload-preview" id="idBackPreview" style="display:none;">
+              <img id="idBackImage" alt="身份证反面预览">
+              <button type="button" class="upload-replace" id="idBackReplace">重新上传</button>
+            </div>
+          </div>
+          <div class="error-msg" id="idBackError"></div>
+        </div>
+      </div>
+
+      <!-- ===== 提交按钮 ===== -->
+      <div class="form-actions">
+        <button type="submit" class="submit-btn" id="submitBtn">
+          <span class="btn-text">&#10004; 提交报名</span>
+          <span class="loading-text">
+            <span class="spinner"></span>
+            提交中...
+          </span>
+        </button>
+        <button type="reset" class="reset-btn" id="resetBtn">
+          &#8635; 重新填写
+        </button>
+      </div>
+    </form>
+
+    <!-- ===== 底部信息 ===== -->
+    <div class="footer">
+      <p>&copy; 2026 台州万鑫安全技术咨询有限公司</p>
+      <p>地址：浙江省台州市椒江区</p>
+    </div>
+  </div>
+
+  <!-- ===== 成功弹窗 ===== -->
+  <div class="modal-overlay" id="successModal">
+    <div class="modal-content">
+      <div class="modal-icon">&#9989;</div>
+      <h2 class="modal-title">报名成功！</h2>
+      <div class="modal-body">
+        <p>您的报名信息已成功提交。</p>
+        <p>我们会尽快与您联系确认。</p>
+        <p class="modal-info">如需修改信息，请联系工作人员。</p>
+      </div>
+      <button class="modal-btn" id="modalCloseBtn">我知道了</button>
+    </div>
+  </div>
+
+  <!-- ===== 图片预览弹窗 ===== -->
+  <div class="modal-overlay" id="previewModal">
+    <div class="modal-content modal-image-content">
+      <button class="modal-close-btn" id="previewCloseBtn">&times;</button>
+      <img id="previewImage" alt="图片预览" class="preview-full-image">
+    </div>
+  </div>
+
+  <script src="js/script.js"></script>
+</body>
+</html>
