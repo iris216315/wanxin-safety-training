@@ -12,7 +12,18 @@
   // 配置
   // =============================================
   const CONFIG = {
-    apiUrl: '', // 部署时修改为实际API地址，留空使用本地存储
+    // API 地址：部署后端后修改为实际地址
+    // 当前自动判断：本地开发用 localhost，生产用部署地址
+    apiUrl: (() => {
+      // 部署后将此行改为后端真实地址，例如：
+      // return 'https://wanxin-api.onrender.com';
+      const host = window.location.hostname;
+      if (host === 'localhost' || host === '127.0.0.1') {
+        return 'http://localhost:3001';
+      }
+      // === 部署后请修改此处为你的后端地址 ===
+      return 'http://localhost:3001';
+    })(),
     maxFileSize: 10 * 1024 * 1024, // 10MB
     allowedImageTypes: ['image/jpeg', 'image/png'],
   };
