@@ -13,6 +13,9 @@
  * - Supabase 直连存储
  */
 
+// ===== 第一行执行标记 =====
+document.documentElement.setAttribute('data-js-loaded', 'true');
+
 (function () {
   'use strict';
 
