@@ -164,8 +164,12 @@
 
   function setupUploadHandlers() {
     uploadConfigs.forEach(cfg => {
-      cfg.inputEl.addEventListener('change', function () { handleFileSelect(this, cfg); });
+      // 监听文件选择
+      cfg.inputEl.addEventListener('change', function () {
+        handleFileSelect(this, cfg);
+      });
 
+      // 拖拽上传
       cfg.areaEl.addEventListener('dragover', e => { e.preventDefault(); cfg.areaEl.classList.add('dragover'); });
       cfg.areaEl.addEventListener('dragleave', e => { e.preventDefault(); cfg.areaEl.classList.remove('dragover'); });
       cfg.areaEl.addEventListener('drop', e => {
@@ -176,11 +180,14 @@
           handleFileSelect(cfg.inputEl, cfg);
         }
       });
+
+      // 点击区域触发文件选择
       cfg.areaEl.addEventListener('click', function (e) {
-        if (this.classList.contains('has-file') && !e.target.classList.contains('upload-replace')) return;
+        if (e.target.closest('.upload-replace, .upload-preview')) return;
         cfg.inputEl.click();
       });
 
+      // 重新上传
       if (cfg.replaceEl) {
         cfg.replaceEl.addEventListener('click', function (e) {
           e.stopPropagation();
@@ -189,9 +196,10 @@
         });
       }
 
+      // 点击预览图放大
       cfg.imageEl.addEventListener('click', function (e) {
         e.stopPropagation();
-        if (this.src) {
+        if (this.src && this.src.startsWith('data:')) {
           dom.previewImage.src = this.src;
           dom.previewModal.classList.add('show');
         }
@@ -731,9 +739,16 @@
   // =============================================
 
   function init() {
+    console.log('📋 万鑫报名系统初始化开始...');
+    console.log('📦 Supabase SDK:', typeof window.supabase !== 'undefined' ? '已加载' : '未加载');
+    console.log('📦 Tesseract:', typeof Tesseract !== 'undefined' ? '已加载' : '未加载');
+    console.log('📦 validateName:', typeof validateName === 'function' ? '已定义' : '未定义');
+    console.log('📦 detectFace:', typeof detectFace === 'function' ? '已定义' : '未定义');
+
     setupFieldValidation();
     setupRadioStyling();
     setupUploadHandlers();
+    console.log('📋 事件绑定完成');
 
     dom.form.addEventListener('submit', handleSubmit);
     dom.resetBtn.addEventListener('click', handleResetClick);
