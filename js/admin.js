@@ -12,25 +12,31 @@
   const SUPABASE_ANON_KEY = 'sb_publishable_Bd3-2QXZ9doG_-6fzkAfeg_TzXSiCiV';
 
   /** Supabase REST API 请求 */
-  async function sb(method, path, body) {
+  async function sb(method, path, body, count) {
     const url = SUPABASE_URL + '/rest/v1/' + path;
     const headers = {
       'apikey': SUPABASE_ANON_KEY,
       'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
       'Content-Type': 'application/json',
     };
+    if (count) headers['Prefer'] = 'count=exact';
     const options = { method, headers };
     if (body && (method === 'POST' || method === 'PATCH')) {
       options.body = JSON.stringify(body);
     }
     const res = await fetch(url, options);
     const text = await res.text();
-    if (!res.ok) throw new Error(text.substring(0, 150));
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.substring(0, 150)}`);
     if (res.status === 204 || text === '') return null;
-    return JSON.parse(text);
+    const data = JSON.parse(text);
+    if (count) {
+      const cr = res.headers.get('content-range');
+      return { data, count: cr ? parseInt(cr.split('/')[1], 10) : data.length };
+    }
+    return data;
   }
 
-  function sbGet(path) { return sb('GET', path); }
+  function sbGet(path, count) { return sb('GET', path, null, count); }
   function sbPatch(path, body) { return sb('PATCH', path, body); }
   function sbPost(path, body) { return sb('POST', path, body); }
   function sbDelete(path) { return sb('DELETE', path); }
@@ -221,18 +227,19 @@
     tableBody.innerHTML = '<tr><td colspan="10" class="loading-row">加载中...</td></tr>';
 
     try {
-      let filter = '';
-      if (searchQuery) {
-        filter = `&or=(name.ilike.*${encodeURIComponent(searchQuery)}*,id_card.ilike.*${encodeURIComponent(searchQuery)}*,phone.ilike.*${encodeURIComponent(searchQuery)}*,work_unit.ilike.*${encodeURIComponent(searchQuery)}*,registration_no.ilike.*${encodeURIComponent(searchQuery)}*)`;
+      // 搜索过滤
+      let q = 'registrations?select=*';
+      const sq = searchQuery.trim();
+      if (sq) {
+        const e = encodeURIComponent;
+        q += `&or=(name.ilike.*${e(sq)}*,id_card.ilike.*${e(sq)}*,phone.ilike.*${e(sq)}*,work_unit.ilike.*${e(sq)}*,registration_no.ilike.*${e(sq)}*)`;
       }
 
-      // 获取总数
-      const countResult = await sbGet(`registrations?select=id${filter}&order=created_at.desc&head=true`);
-      const total = countResult ? (Array.isArray(countResult) ? countResult.length : (countResult.count || 0)) : 0;
-
-      // 获取分页数据
+      // 获取总数 + 分页数据（一次查询）
       const offset = (page - 1) * PAGE_SIZE;
-      const rows = await sbGet(`registrations?select=*${filter}&order=created_at.desc&limit=${PAGE_SIZE}&offset=${offset}`) || [];
+      const result = await sbGet(`${q}&order=created_at.desc&limit=${PAGE_SIZE}&offset=${offset}`, true);
+      const rows = result?.data || [];
+      const total = result?.count || 0;
 
       renderTable(rows);
       renderPagination(total, page);
@@ -288,8 +295,8 @@
 
   async function loadStats() {
     try {
-      const r = await sbGet('registrations?select=id&limit=1');
-      sidebarStats.textContent = `总报名: ${(r || []).length}+ 条`;
+      const r = await sbGet('registrations?select=id&limit=1', true);
+      sidebarStats.textContent = `总报名: ${r?.count || 0} 条`;
     } catch (e) {}
   }
 

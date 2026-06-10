@@ -22,8 +22,10 @@
   const SUPABASE_URL = 'https://isgzgscaljosdsxatclo.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_Bd3-2QXZ9doG_-6fzkAfeg_TzXSiCiV';
   const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  // 暴露给其他模块使用
+  // 暴露给其他模块使用（validation.js / image-check.js）
   window.__supabase = supabase;
+  window.__SUPABASE_URL = SUPABASE_URL;
+  window.__SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 
   // =============================================
   // DOM 引用

@@ -123,6 +123,9 @@ function validateName(name) {
 
 async function checkRegistrationWindow() {
   try {
+    const supabase = window.__supabase;
+    if (!supabase) return { allowed: true, message: '' };
+
     const { data, error } = await supabase
       .from('app_settings')
       .select('value')
@@ -163,6 +166,9 @@ async function checkRegistrationWindow() {
 
 async function checkIdCardDuplicate(idCard) {
   try {
+    const supabase = window.__supabase;
+    if (!supabase) return { duplicate: false, count: 0 };
+
     const v = idCard.trim().toUpperCase();
     const { count, error } = await supabase
       .from('registrations')
