@@ -275,11 +275,11 @@
 
       console.log('🔍 开始证件照检测...');
 
-      // 1. 人脸检测
-      statusEl.textContent = '🔍 检测人脸...';
+      // 1. 人像特征检测
+      statusEl.textContent = '🔍 检测人像...';
       await sleep(100);
-      const faceResult = await detectFace(img);
-      console.log('人脸检测结果:', faceResult);
+      const faceResult = detectPortrait(img);
+      console.log('人像检测结果:', faceResult);
       if (!faceResult.hasFace) {
         showError(cfg.errorKey, faceResult.message);
         statusEl.textContent = '❌ ' + faceResult.message;
@@ -294,17 +294,6 @@
       if (!sharpResult.isSharp) {
         showError(cfg.errorKey, sharpResult.message);
         statusEl.textContent = '❌ ' + sharpResult.message;
-        return;
-      }
-
-      // 3. 背景检测
-      statusEl.textContent = '🔍 检测背景...';
-      await sleep(100);
-      const bgResult = checkBackground(img, 'any');
-      console.log('背景检测结果:', bgResult);
-      if (!bgResult.isSolid) {
-        showError(cfg.errorKey, bgResult.message);
-        statusEl.textContent = '❌ ' + bgResult.message;
         return;
       }
 
