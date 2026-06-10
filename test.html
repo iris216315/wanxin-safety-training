@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html><body>
+<h2>🔧 诊断测试</h2>
+<div id="result" style="font-size:18px;padding:16px;background:#f0f0f0;border-radius:8px;">等待 JS 执行...</div>
+<script>
+document.getElementById('result').innerHTML = '✅ JavaScript 执行正常！<br>';
+document.getElementById('result').innerHTML += '✅ validation.js 存在: ' + (typeof validateName === 'function') + '<br>';
+document.getElementById('result').innerHTML += '✅ image-check.js 存在: ' + (typeof detectPortrait === 'function') + '<br>';
+
+// 加载外部脚本测试
+var s = document.createElement('script');
+s.src = 'js/validation.js';
+s.onload = function() {
+  document.getElementById('result').innerHTML += '✅ validation.js 已加载: ' + (typeof validateName === 'function') + '<br>';
+};
+s.onerror = function() {
+  document.getElementById('result').innerHTML += '❌ validation.js 加载失败!<br>';
+};
+document.body.appendChild(s);
+
+var s2 = document.createElement('script');
+s2.src = 'js/image-check.js';
+s2.onload = function() {
+  document.getElementById('result').innerHTML += '✅ image-check.js 已加载: ' + (typeof detectPortrait === 'function') + '<br>';
+};
+s2.onerror = function() {
+  document.getElementById('result').innerHTML += '❌ image-check.js 加载失败!<br>';
+};
+document.body.appendChild(s2);
+
+var s3 = document.createElement('script');
+s3.src = 'js/script.js';
+s3.onload = function() {
+  document.getElementById('result').innerHTML += '✅ script.js 已加载<br>';
+};
+s3.onerror = function() {
+  document.getElementById('result').innerHTML += '❌ script.js 加载失败!<br>';
+};
+document.body.appendChild(s3);
+</script>
+</body></html>
