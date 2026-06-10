@@ -425,11 +425,40 @@
     try { return validateName(v); } catch (e) { return !v.trim() ? '请输入姓名' : ''; }
   }
 
-  /** 提交前完整验证（含异步检查） */
+  /** 提交前完整验证（含异步检查 + 图片检测） */
   async function preSubmitValidation() {
-    const errors = await validateFormEnhanced();
+    clearAllErrors();
+    const errors = {};
 
-    // 显示所有错误
+    // ===== 文本字段验证 =====
+    const nameErr = validateName(dom.name.value);
+    if (nameErr) errors.name = nameErr;
+
+    if (!getRadioValue('gender')) errors.gender = '请选择性别';
+    if (!dom.education.value) errors.education = '请选择学历';
+    if (!getRadioValue('personType')) errors.personType = '请选择人员类型';
+
+    const idCardVal = dom.idCard.value.trim().toUpperCase();
+    const idErr = validateIdCard(idCardVal);
+    if (idErr) errors.idCard = idErr;
+
+    if (!dom.workUnit.value.trim()) errors.workUnit = '请输入工作单位';
+    else if (dom.workUnit.value.trim().length < 2) errors.workUnit = '工作单位名称过短';
+
+    const creditErr = validateCreditCode(dom.creditCode.value);
+    if (creditErr) errors.creditCode = creditErr;
+
+    const phoneErr = validatePhone(dom.phone.value);
+    if (phoneErr) errors.phone = phoneErr;
+
+    if (!dom.street.value) errors.street = '请选择所属街道';
+
+    // ===== 照片存在性检查 =====
+    if (!dom.portraitInput.files[0]) errors.portrait = '请上传电子免冠证件照';
+    if (!dom.idFrontInput.files[0]) errors.idFront = '请上传身份证正面照片';
+    if (!dom.idBackInput.files[0]) errors.idBack = '请上传身份证反面照片';
+
+    // ===== 显示所有文本错误 =====
     let firstErrKey = null;
     for (const [key, msg] of Object.entries(errors)) {
       showError(key, msg);
@@ -437,7 +466,6 @@
     }
 
     if (firstErrKey) {
-      // 滚动到第一个错误
       const elMap = {
         name: dom.name, gender: document.querySelector('.radio-group'), education: dom.education,
         personType: document.querySelectorAll('.radio-group')[1], idCard: dom.idCard,
@@ -450,43 +478,95 @@
       return false;
     }
 
-    // 报名时间段检查
-    const windowCheck = await checkRegistrationWindow();
-    if (!windowCheck.allowed) {
-      showToast(windowCheck.message);
-      return false;
-    }
-
-    // 身份证查重
-    const dupCheck = await checkIdCardDuplicate(dom.idCard.value);
-    if (dupCheck.duplicate) {
-      showError('idCard', '此身份证号码已报名，请勿重复提交');
-      dom.idCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      showToast('此身份证号码已报名');
-      return false;
-    }
-
-    // OCR 姓名一致性检查（如果已识别的姓名与填写的不同）
-    if (ocrResults.ocrName) {
-      const typedName = dom.name.value.trim();
-      if (typedName && !ocrResults.ocrName.includes(typedName) && !typedName.includes(ocrResults.ocrName)) {
-        showError('name', `OCR识别姓名"${ocrResults.ocrName}"与填写不一致`);
-        dom.name.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // ===== 在线检查 =====
+    try {
+      // 报名时间段检查
+      showToast('⏳ 检查报名时间...');
+      const windowCheck = await checkRegistrationWindow();
+      if (!windowCheck.allowed) {
+        showToast(windowCheck.message);
         return false;
       }
-    }
 
-    // OCR 身份证号一致性检查
-    if (ocrResults.idCard) {
-      const typedId = dom.idCard.value.trim().toUpperCase();
-      if (typedId && ocrResults.idCard !== typedId) {
-        showError('idCard', `OCR识别号码"${ocrResults.idCard}"与填写不一致`);
+      // 身份证查重
+      showToast('⏳ 检查身份证是否已报名...');
+      const dupCheck = await checkIdCardDuplicate(dom.idCard.value);
+      if (dupCheck.duplicate) {
+        showError('idCard', '此身份证号码已报名，请勿重复提交');
         dom.idCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        showToast('此身份证号码已报名');
         return false;
       }
+
+      // ===== 图片检测（提交时重新检测，不依赖上传时的事件） =====
+      // 证件照检测
+      if (dom.portraitInput.files[0]) {
+        showToast('⏳ 检测证件照...');
+        const img = await loadImageFromFile(dom.portraitInput.files[0]);
+        const faceResult = detectPortrait(img);
+        if (!faceResult.hasFace) {
+          showError('portrait', faceResult.message);
+          dom.portraitArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          showToast(faceResult.message);
+          return false;
+        }
+        const sharpResult = checkSharpness(img);
+        if (!sharpResult.isSharp) {
+          showError('portrait', sharpResult.message);
+          dom.portraitArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          showToast(sharpResult.message);
+          return false;
+        }
+      }
+
+      // 身份证正面检测 + OCR
+      if (dom.idFrontInput.files[0]) {
+        showToast('⏳ OCR识别身份证...');
+        const idFrontDataUrl = await fileToDataUrl(dom.idFrontInput.files[0]);
+        // 只做OCR，不需要人脸检测
+        if (typeof Tesseract !== 'undefined') {
+          const ocrResult = await ocrIdCard(idFrontDataUrl, 'front');
+          if (ocrResult.success && ocrResult.fields.idCard) {
+            const typedId = dom.idCard.value.trim().toUpperCase();
+            const ocrId = ocrResult.fields.idCard.toUpperCase();
+            if (typedId && ocrId !== typedId) {
+              showError('idFront', `OCR识别号码"${ocrId}"与填写的"${typedId}"不一致`);
+              dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              showToast(`身份证号不一致，请核对`);
+              return false;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('验证出错:', e);
+      showToast('验证异常，但可继续提交');
     }
 
     return true;
+  }
+
+  function loadImageFromFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = e => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   }
 
   // =============================================
