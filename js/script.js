@@ -17,12 +17,22 @@
   'use strict';
 
   // =============================================
-  // Supabase 初始化
+  // Supabase 初始化（防CDN加载失败导致脚本崩溃）
   // =============================================
   const SUPABASE_URL = 'https://isgzgscaljosdsxatclo.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_Bd3-2QXZ9doG_-6fzkAfeg_TzXSiCiV';
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  // 暴露给其他模块使用（validation.js / image-check.js）
+
+  let supabase = null;
+  try {
+    if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } else {
+      console.warn('Supabase SDK 未加载，使用 REST API 直连');
+    }
+  } catch (e) {
+    console.warn('Supabase 初始化失败:', e.message);
+  }
+  // 暴露给其他模块使用
   window.__supabase = supabase;
   window.__SUPABASE_URL = SUPABASE_URL;
   window.__SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
@@ -244,117 +254,123 @@
   // =============================================
 
   async function runPortraitChecks(cfg, dataUrl) {
-    const img = new Image();
-    img.src = dataUrl;
-    await new Promise(resolve => { img.onload = resolve; });
+    try {
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise(resolve => { img.onload = resolve; });
 
-    // 显示检测状态
-    const statusEl = document.createElement('div');
-    statusEl.className = 'check-status';
-    statusEl.style.cssText = 'font-size:12px;color:#666;padding:4px 8px;text-align:center;';
-    cfg.areaEl.appendChild(statusEl);
+      // 显示检测状态
+      const statusEl = document.createElement('div');
+      statusEl.className = 'check-status';
+      statusEl.style.cssText = 'font-size:12px;color:#666;padding:4px 8px;text-align:center;';
+      cfg.areaEl.appendChild(statusEl);
 
-    // 1. 人脸检测
-    statusEl.textContent = '🔍 检测人脸...';
-    await sleep(100);
-    const faceResult = await detectFace(img);
-    if (!faceResult.hasFace) {
-      showError(cfg.errorKey, faceResult.message);
-      statusEl.textContent = '❌ ' + faceResult.message;
-      return;
+      console.log('🔍 开始证件照检测...');
+
+      // 1. 人脸检测
+      statusEl.textContent = '🔍 检测人脸...';
+      await sleep(100);
+      const faceResult = await detectFace(img);
+      console.log('人脸检测结果:', faceResult);
+      if (!faceResult.hasFace) {
+        showError(cfg.errorKey, faceResult.message);
+        statusEl.textContent = '❌ ' + faceResult.message;
+        return;
+      }
+
+      // 2. 清晰度检测
+      statusEl.textContent = '🔍 检测清晰度...';
+      await sleep(100);
+      const sharpResult = checkSharpness(img);
+      console.log('清晰度检测结果:', sharpResult);
+      if (!sharpResult.isSharp) {
+        showError(cfg.errorKey, sharpResult.message);
+        statusEl.textContent = '❌ ' + sharpResult.message;
+        return;
+      }
+
+      // 3. 背景检测
+      statusEl.textContent = '🔍 检测背景...';
+      await sleep(100);
+      const bgResult = checkBackground(img, 'any');
+      console.log('背景检测结果:', bgResult);
+      if (!bgResult.isSolid) {
+        showError(cfg.errorKey, bgResult.message);
+        statusEl.textContent = '❌ ' + bgResult.message;
+        return;
+      }
+
+      // 全部通过
+      statusEl.textContent = '✅ 照片检测通过';
+      statusEl.style.color = '#34a853';
+      showError(cfg.errorKey, '');
+      showToast('✅ 证件照检测通过');
+    } catch (e) {
+      console.error('证件照检测出错:', e);
+      showToast('照片检测出错，但可继续提交');
     }
-
-    // 2. 清晰度检测
-    statusEl.textContent = '🔍 检测清晰度...';
-    await sleep(100);
-    const sharpResult = checkSharpness(img);
-    if (!sharpResult.isSharp) {
-      showError(cfg.errorKey, sharpResult.message);
-      statusEl.textContent = '❌ ' + sharpResult.message;
-      return;
-    }
-
-    // 3. 背景检测
-    statusEl.textContent = '🔍 检测背景...';
-    await sleep(100);
-    const bgResult = checkBackground(img, 'any');
-    if (!bgResult.isSolid) {
-      showError(cfg.errorKey, bgResult.message);
-      statusEl.textContent = '❌ ' + bgResult.message;
-      return;
-    }
-
-    // 全部通过
-    statusEl.textContent = '✅ 照片检测通过';
-    statusEl.style.color = '#34a853';
-    showError(cfg.errorKey, '');
   }
 
   async function runIdFrontChecks(cfg, dataUrl) {
-    const img = new Image();
-    img.src = dataUrl;
-    await new Promise(resolve => { img.onload = resolve; });
-
-    const statusEl = document.createElement('div');
-    statusEl.className = 'check-status';
-    statusEl.style.cssText = 'font-size:12px;color:#666;padding:4px 8px;text-align:center;';
-    cfg.areaEl.appendChild(statusEl);
-
-    // 1. 清晰度检测
-    statusEl.textContent = '🔍 检测清晰度...';
-    await sleep(100);
-    const sharpResult = checkSharpness(img);
-    if (!sharpResult.isSharp) {
-      showError(cfg.errorKey, sharpResult.message);
-      statusEl.textContent = '❌ ' + sharpResult.message;
-      return;
-    }
-
-    // 2. OCR 识别
-    statusEl.textContent = '🔍 OCR识别身份证信息...（可能需要几秒钟）';
-    await sleep(100);
     try {
-      const ocrResult = await ocrIdCard(dataUrl, 'front');
-      if (ocrResult.success) {
-        ocrResults.idCard = ocrResult.fields.idCard || '';
-        ocrResults.ocrName = ocrResult.fields.name || '';
-        ocrResults.ocrGender = ocrResult.fields.gender || '';
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise(resolve => { img.onload = resolve; });
 
-        // 对比姓名
-        const typedName = dom.name.value.trim();
-        if (ocrResult.fields.name && typedName && !ocrResult.fields.name.includes(typedName) && !typedName.includes(ocrResult.fields.name)) {
-          statusEl.textContent = '⚠️ 姓名与身份证不一致，请核对';
-          statusEl.style.color = '#ea4335';
-          showError(cfg.errorKey, `OCR识别姓名为"${ocrResult.fields.name}"，与填写的不一致`);
-          return;
-        }
+      const statusEl = document.createElement('div');
+      statusEl.className = 'check-status';
+      statusEl.style.cssText = 'font-size:12px;color:#666;padding:4px 8px;text-align:center;';
+      cfg.areaEl.appendChild(statusEl);
 
-        // 对比身份证号
-        if (ocrResult.fields.idCard) {
-          const typedId = dom.idCard.value.trim().toUpperCase();
-          if (typedId && ocrResult.fields.idCard !== typedId) {
-            statusEl.textContent = '⚠️ 身份证号与OCR识别不一致';
-            statusEl.style.color = '#ea4335';
-            showError(cfg.errorKey, `OCR识别号码为"${ocrResult.fields.idCard}"，与填写的不一致`);
-            return;
+      console.log('🔍 开始身份证 OCR...');
+
+      // 1. 清晰度检测
+      statusEl.textContent = '🔍 检测清晰度...';
+      await sleep(100);
+      const sharpResult = checkSharpness(img);
+      if (!sharpResult.isSharp) {
+        showError(cfg.errorKey, sharpResult.message);
+        statusEl.textContent = '❌ ' + sharpResult.message;
+        return;
+      }
+
+      // 2. OCR 识别
+      statusEl.textContent = '🔍 OCR识别身份证信息...（可能需要几秒钟）';
+      await sleep(100);
+      try {
+        const ocrResult = await ocrIdCard(dataUrl, 'front');
+        console.log('OCR 结果:', ocrResult);
+        if (ocrResult.success) {
+          ocrResults.idCard = ocrResult.fields.idCard || '';
+          ocrResults.ocrName = ocrResult.fields.name || '';
+          ocrResults.ocrGender = ocrResult.fields.gender || '';
+
+          // 如果OCR识别到姓名但填写的为空，自动填充
+          if (ocrResult.fields.name) {
+            const typedName = dom.name.value.trim();
+            if (!typedName) dom.name.value = ocrResult.fields.name;
           }
-          // 自动填充身份证号
-          if (!typedId) {
-            dom.idCard.value = ocrResult.fields.idCard;
-          }
-        }
 
-        statusEl.textContent = '✅ 身份证信息识别通过';
-        statusEl.style.color = '#34a853';
-        showError(cfg.errorKey, '');
-      } else {
-        statusEl.textContent = '⚠️ OCR识别失败，但仍可提交';
+          if (ocrResult.fields.idCard) {
+            const typedId = dom.idCard.value.trim().toUpperCase();
+            if (!typedId) dom.idCard.value = ocrResult.fields.idCard;
+          }
+
+          statusEl.textContent = '✅ 身份证识别通过';
+          statusEl.style.color = '#34a853';
+          showToast('✅ 身份证OCR识别完成');
+        } else {
+          statusEl.textContent = '⚠️ OCR识别失败，手动核对即可';
+          statusEl.style.color = '#fbbc04';
+        }
+      } catch (ocrErr) {
+        console.warn('OCR 失败:', ocrErr);
+        statusEl.textContent = '⚠️ OCR识别异常，手动核对即可';
         statusEl.style.color = '#fbbc04';
       }
+      showError(cfg.errorKey, '');
     } catch (e) {
-      console.warn('OCR 失败:', e);
-      statusEl.textContent = '⚠️ OCR识别失败，但仍可提交（手动核对）';
-      statusEl.style.color = '#fbbc04';
+      console.error('身份证检测出错:', e);
     }
   }
 
@@ -493,13 +509,21 @@
       const now = new Date();
 
       // 生成报名编号
-      const { count } = await supabase
-        .from('registrations')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', now.toISOString().slice(0, 10) + 'T00:00:00Z');
+      let todayCount = 0;
+      if (supabase) {
+        const { count } = await supabase
+          .from('registrations')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', now.toISOString().slice(0, 10) + 'T00:00:00Z');
+        todayCount = count || 0;
+      } else {
+        const todayStart = now.toISOString().slice(0, 10) + 'T00:00:00Z';
+        const result = await api('GET', `registrations?select=id&created_at=gte.${encodeURIComponent(todayStart)}`, null);
+        todayCount = (result || []).length;
+      }
 
       const dateStr = now.getFullYear() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
-      const regNo = 'WX' + dateStr + String((count || 0) + 1).padStart(4, '0');
+      const regNo = 'WX' + dateStr + String((todayCount + 1)).padStart(4, '0');
       const randomSuffix = Math.random().toString(36).substring(2, 8);
 
       // 上传照片（并行）
@@ -510,7 +534,7 @@
       ]);
 
       // 写入数据库
-      const { error } = await supabase.from('registrations').insert({
+      const insertData = {
         registration_no: regNo,
         name: dom.name.value.trim(),
         gender: getRadioValue('gender'),
@@ -526,9 +550,17 @@
         id_back_url: idBackUrl,
         submit_time: now.toISOString(),
         status: 'pending',
-      });
+      };
 
-      if (error) throw error;
+      let error = null;
+      if (supabase) {
+        const result = await supabase.from('registrations').insert(insertData);
+        error = result.error;
+      } else {
+        await api('POST', 'registrations', insertData);
+      }
+
+      if (error) throw new Error(typeof error === 'string' ? error : error.message || '保存失败');
 
       console.log(`✅ 报名成功: ${regNo}`);
       showSuccessModal(regNo);
@@ -543,15 +575,54 @@
     }
   }
 
+  /** REST API 请求 */
+  async function api(method, path, body) {
+    const url = SUPABASE_URL + '/rest/v1/' + path;
+    const res = await fetch(url, {
+      method,
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '');
+      throw new Error(`API ${res.status}: ${txt.substring(0, 100)}`);
+    }
+    const txt = await res.text().catch(() => '');
+    return txt ? JSON.parse(txt) : null;
+  }
+
   async function uploadToSupabase(file, folder, fileName) {
     const ext = file.name.split('.').pop();
     const filePath = `${folder}/${fileName}.${ext}`;
-    const { error } = await supabase.storage
-      .from('registration-photos')
-      .upload(filePath, file, { contentType: file.type, upsert: false });
-    if (error) throw new Error(`照片上传失败: ${error.message}`);
-    const { data } = supabase.storage.from('registration-photos').getPublicUrl(filePath);
-    return data.publicUrl;
+
+    if (supabase) {
+      // 使用 Supabase JS SDK
+      const { error } = await supabase.storage
+        .from('registration-photos')
+        .upload(filePath, file, { contentType: file.type, upsert: false });
+      if (error) throw new Error(`照片上传失败: ${error.message}`);
+      const { data } = supabase.storage.from('registration-photos').getPublicUrl(filePath);
+      return data.publicUrl;
+    } else {
+      // 使用 REST API（Supabase JS SDK 不可用时）
+      const formData = new FormData();
+      formData.append('file', file);
+      // Storage REST API requires different approach
+      const res = await fetch(`${SUPABASE_URL}/storage/v1/object/registration-photos/${filePath}`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        },
+        body: file,
+      });
+      if (!res.ok) throw new Error(`照片上传失败: ${res.status}`);
+      return `${SUPABASE_URL}/storage/v1/object/public/registration-photos/${filePath}`;
+    }
   }
 
   // =============================================
