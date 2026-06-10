@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>管理后台 - 万鑫安全培训报名系统</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <link rel="icon" href="images/logo.jpg" type="image/jpeg">
+</head>
+<body>
+<div id="app">
+  <!-- ===== 登录页 ===== -->
+  <div id="loginPage" class="page">
+    <div class="admin-login-container">
+      <div class="admin-login-card">
+        <div class="admin-login-header">
+          <img src="images/logo.jpg" alt="万鑫安全" class="admin-logo">
+          <h2>管理员登录</h2>
+          <p>台州万鑫安全技术咨询有限公司</p>
+        </div>
+        <form id="loginForm" class="admin-login-form">
+          <div class="form-group">
+            <label class="form-label">用户名</label>
+            <input type="text" class="form-input" id="loginUsername" placeholder="请输入用户名" autocomplete="username">
+          </div>
+          <div class="form-group">
+            <label class="form-label">密码</label>
+            <input type="password" class="form-input" id="loginPassword" placeholder="请输入密码" autocomplete="current-password">
+          </div>
+          <div id="loginError" class="error-msg visible" style="max-height:40px;display:none;"></div>
+          <button type="submit" class="submit-btn" id="loginBtn">登 录</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 后台主页 ===== -->
+  <div id="dashboardPage" class="page" style="display:none;">
+    <!-- 顶部导航 -->
+    <nav class="admin-nav">
+      <div class="admin-nav-inner">
+        <div class="admin-nav-left">
+          <img src="images/logo.jpg" alt="" class="admin-nav-logo">
+          <span class="admin-nav-title">报名管理系统</span>
+        </div>
+        <div class="admin-nav-right">
+          <span class="admin-user-badge" id="userBadge"></span>
+          <button class="admin-nav-btn" id="settingsBtn">⚙️ 设置</button>
+          <button class="admin-nav-btn admin-logout-btn" id="logoutBtn">退出</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="admin-body">
+      <!-- 侧边栏 -->
+      <aside class="admin-sidebar">
+        <div class="sidebar-menu">
+          <div class="sidebar-item active" data-view="registrations">
+            <span>📋</span> 报名记录
+          </div>
+          <div class="sidebar-item" data-view="settings" id="sidebarSettings" style="display:none;">
+            <span>⚙️</span> 系统设置
+          </div>
+          <div class="sidebar-item" data-view="admins" id="sidebarAdmins" style="display:none;">
+            <span>👤</span> 管理员管理
+          </div>
+        </div>
+        <div class="sidebar-footer">
+          <div class="sidebar-stats" id="sidebarStats">加载中...</div>
+        </div>
+      </aside>
+
+      <!-- 主内容 -->
+      <main class="admin-main">
+
+        <!-- ===== 报名记录视图 ===== -->
+        <div id="viewRegistrations" class="admin-view">
+          <div class="view-header">
+            <h2>📋 报名记录</h2>
+            <div class="view-actions">
+              <input type="text" class="search-input" id="searchInput" placeholder="搜索姓名/身份证/手机号...">
+              <button class="action-btn" id="exportBtn">📥 导出 Excel</button>
+              <button class="action-btn action-btn-danger" id="batchDeleteBtn" style="display:none;">🗑️ 删除选中</button>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="data-table" id="registrationsTable">
+              <thead>
+                <tr>
+                  <th><input type="checkbox" id="selectAll"></th>
+                  <th>编号</th>
+                  <th>姓名</th>
+                  <th>身份证</th>
+                  <th>单位</th>
+                  <th>手机</th>
+                  <th>街道</th>
+                  <th>状态</th>
+                  <th>提交时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="tableBody">
+                <tr><td colspan="10" class="loading-row">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pagination" id="pagination"></div>
+        </div>
+
+        <!-- ===== 系统设置视图 ===== -->
+        <div id="viewSettings" class="admin-view" style="display:none;">
+          <div class="view-header"><h2>⚙️ 系统设置</h2></div>
+          <div class="settings-card">
+            <h3>报名时间段</h3>
+            <div class="form-group">
+              <label class="form-label">启用时间限制</label>
+              <label class="switch">
+                <input type="checkbox" id="timeLimitEnabled">
+                <span class="switch-slider"></span>
+              </label>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">开始时间</label>
+                <input type="datetime-local" class="form-input" id="timeStart">
+              </div>
+              <div class="form-group">
+                <label class="form-label">结束时间</label>
+                <input type="datetime-local" class="form-input" id="timeEnd">
+              </div>
+            </div>
+            <button class="submit-btn" id="saveSettingsBtn" style="width:auto;">保存设置</button>
+          </div>
+        </div>
+
+        <!-- ===== 管理员管理视图 ===== -->
+        <div id="viewAdmins" class="admin-view" style="display:none;">
+          <div class="view-header">
+            <h2>👤 管理员管理</h2>
+            <button class="action-btn" id="addAdminBtn">➕ 添加管理员</button>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>用户名</th>
+                  <th>显示名称</th>
+                  <th>角色</th>
+                  <th>最后登录</th>
+                  <th>创建时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="adminTableBody">
+                <tr><td colspan="6" class="loading-row">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 添加管理员弹窗 -->
+          <div class="modal-overlay" id="addAdminModal">
+            <div class="modal-content" style="max-width:400px;text-align:left;">
+              <h3 style="margin-bottom:16px;">添加管理员</h3>
+              <div class="form-group">
+                <label class="form-label">用户名</label>
+                <input type="text" class="form-input" id="newAdminUsername">
+              </div>
+              <div class="form-group">
+                <label class="form-label">密码</label>
+                <input type="password" class="form-input" id="newAdminPassword">
+              </div>
+              <div class="form-group">
+                <label class="form-label">显示名称</label>
+                <input type="text" class="form-input" id="newAdminDisplayName">
+              </div>
+              <div class="form-group">
+                <label class="form-label">角色</label>
+                <select class="form-select" id="newAdminRole">
+                  <option value="admin">普通管理员</option>
+                  <option value="super_admin">超级管理员</option>
+                </select>
+              </div>
+              <button class="submit-btn" id="confirmAddAdmin" style="margin-top:8px;">确认添加</button>
+              <button class="reset-btn" id="cancelAddAdmin" style="margin-top:8px;">取消</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+</div>
+
+<!-- 查看详情弹窗 -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal-content" style="max-width:600px;text-align:left;">
+    <h3 style="margin-bottom:16px;">报名详情</h3>
+    <div id="detailContent"></div>
+    <button class="submit-btn" id="detailCloseBtn" style="margin-top:16px;">关闭</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.0/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="js/validation.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
