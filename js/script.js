@@ -14,6 +14,7 @@
  */
 
 // ===== 第一行执行标记 =====
+alert('Script.js 已加载! 请截图此消息发给我');
 document.documentElement.setAttribute('data-js-loaded', 'true');
 
 (function () {
