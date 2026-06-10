@@ -14,7 +14,6 @@
  */
 
 // ===== 第一行执行标记 =====
-alert('Script.js 已加载! 请截图此消息发给我');
 document.documentElement.setAttribute('data-js-loaded', 'true');
 
 (function () {
@@ -812,19 +811,25 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
   // =============================================
 
   function init() {
+    alert('🔄 开始初始化...');
     console.log('📋 万鑫报名系统初始化开始...');
-    console.log('📦 Supabase SDK:', typeof window.supabase !== 'undefined' ? '已加载' : '未加载');
-    console.log('📦 Tesseract:', typeof Tesseract !== 'undefined' ? '已加载' : '未加载');
     console.log('📦 validateName:', typeof validateName === 'function' ? '已定义' : '未定义');
-    console.log('📦 detectFace:', typeof detectFace === 'function' ? '已定义' : '未定义');
+    console.log('📦 detectPortrait:', typeof detectPortrait === 'function' ? '已定义' : '未定义');
+
+    if (!dom.form) { alert('❌ 找不到表单元素 signupForm'); return; }
+    if (!dom.portraitInput) { alert('❌ 找不到 portraitInput'); return; }
+    if (!dom.idFrontInput) { alert('❌ 找不到 idFrontInput'); return; }
+    if (!dom.idBackInput) { alert('❌ 找不到 idBackInput'); return; }
+    if (!dom.submitBtn) { alert('❌ 找不到 submitBtn'); return; }
 
     setupFieldValidation();
     setupRadioStyling();
     setupUploadHandlers();
-    console.log('📋 事件绑定完成');
 
     dom.form.addEventListener('submit', handleSubmit);
     dom.resetBtn.addEventListener('click', handleResetClick);
+
+    alert('✅ 初始化完成！所有元素已找到，事件已绑定');
 
     dom.modalCloseBtn.addEventListener('click', hideSuccessModal);
     dom.previewCloseBtn.addEventListener('click', hidePreviewModal);
