@@ -32,21 +32,21 @@ function detectPortrait(imgEl) {
     const data = imageData.data;
 
     // 1. 检查分辨率（证件照至少 300x400）
-    if (imgEl.naturalWidth < 200 || imgEl.naturalHeight < 200) {
+    if (imgEl.naturalWidth < 100 || imgEl.naturalHeight < 100) {
       return { hasFace: false, message: '照片分辨率太低，请上传更清晰的图片' };
     }
 
     // 2. 检查宽高比（人像通常是 3:4 至 2:3 左右）
     const ratio = imgEl.naturalWidth / imgEl.naturalHeight;
-    if (ratio < 0.4 || ratio > 1.5) {
+    if (ratio < 0.2 || ratio > 3.0) {
       return { hasFace: false, message: '照片比例异常，请上传正常的人像照' };
     }
 
     // 3. 粗略皮肤检测 - 在画面中央区域采样
     const cx = Math.round(w / 2);
     const cy = Math.round(h / 2);
-    const sampleW = Math.round(w * 0.4);
-    const sampleH = Math.round(h * 0.3);
+    const sampleW = Math.round(w * 0.6);
+    const sampleH = Math.round(h * 0.5);
     const startX = cx - Math.round(sampleW / 2);
     const startY = cy - Math.round(sampleH / 2);
 
@@ -62,7 +62,7 @@ function detectPortrait(imgEl) {
 
         // 简单皮肤色判定：R > 60, G > 40, B > 20, R > G, R > B
         // 且 R - G > 5 （偏红）
-        if (r > 60 && g > 40 && b > 20 && r > g && r > b && (r - g) > 5) {
+        if (r > 50 && g > 30 && b > 15 && r > g && r > b && (r - g) > 3) {
           skinPixels++;
         }
         totalPixels++;
@@ -71,7 +71,7 @@ function detectPortrait(imgEl) {
 
     const skinRatio = skinPixels / totalPixels;
 
-    if (skinRatio < 0.02) {
+    if (skinRatio < 0.003) {
       return { hasFace: false, message: '未检测到人像特征，请上传正面人像照片' };
     }
 
@@ -107,9 +107,15 @@ function checkSharpness(imgEl) {
     let sumSq = 0;
     let count = 0;
 
+    // 限制在画面中央 50% 区域检测（人脸通常在中部）
+    const startY = Math.round(h * 0.15);
+    const endY = Math.round(h * 0.85);
+    const startX = Math.round(w * 0.15);
+    const endX = Math.round(w * 0.85);
+
     // 使用更大的步长加速
-    for (let y = 2; y < h - 2; y += 2) {
-      for (let x = 2; x < w - 2; x += 2) {
+    for (let y = startY; y < endY; y += 2) {
+      for (let x = startX; x < endX; x += 2) {
         const idx = (y * w + x) * 4;
         const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
 
@@ -135,7 +141,7 @@ function checkSharpness(imgEl) {
     const variance = (sumSq / count) - (sum / count) * (sum / count);
 
     // 阈值：低于此值可能模糊
-    if (variance < 20) {
+    if (variance < 8) {
       return { isSharp: false, score: Math.round(variance), message: '照片太模糊，请上传更清晰的照片' };
     }
     return { isSharp: true, score: Math.round(variance), message: '' };

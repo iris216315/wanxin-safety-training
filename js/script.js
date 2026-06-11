@@ -877,7 +877,7 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
 
   function init() {
     console.log('📋 万鑫报名系统 v4 初始化...');
-    console.log('📋 万鑫报名系统初始化开始...');
+    // console.log('📋 万鑫报名系统初始化开始...');
     // console.log('📦 validateName:', typeof validateName === 'function' ? '已定义' : '未定义');
     // console.log('📦 detectPortrait:', typeof detectPortrait === 'function' ? '已定义' : '未定义');
 
