@@ -86,6 +86,22 @@ function validateName(name) {
 }
 
 // =============================================
+// 工作单位 + 统一社会信用代码匹配验证
+// =============================================
+
+function validateCompanyCreditCode(company, creditCode) {
+  const c = (company || '').trim();
+  const cc = (creditCode || '').trim().toUpperCase();
+  if (!c) return '请输入工作单位';
+  if (!cc) return '请输入统一社会信用代码';
+  if (c.length < 2) return '工作单位名称过短';
+  // 统一社会信用代码格式校验
+  const creditErr = validateCreditCode(cc);
+  if (creditErr) return creditErr;
+  return '';
+}
+
+// =============================================
 // REST API（不依赖 Supabase SDK）
 // =============================================
 

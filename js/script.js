@@ -340,25 +340,58 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
       try {
         const ocrResult = await ocrIdCard(dataUrl, 'front');
         console.log('OCR 结果:', ocrResult);
-        if (ocrResult.success) {
-          ocrResults.idCard = ocrResult.fields.idCard || '';
-          ocrResults.ocrName = ocrResult.fields.name || '';
-          ocrResults.ocrGender = ocrResult.fields.gender || '';
+       if (ocrResult.success) {
+         ocrResults.idCard = ocrResult.fields.idCard || '';
+         ocrResults.ocrName = ocrResult.fields.name || '';
+         ocrResults.ocrGender = ocrResult.fields.gender || '';
 
-          // 如果OCR识别到姓名但填写的为空，自动填充
-          if (ocrResult.fields.name) {
-            const typedName = dom.name.value.trim();
-            if (!typedName) dom.name.value = ocrResult.fields.name;
+         // 如果OCR识别到姓名但填写的为空，自动填充
+         if (ocrResult.fields.name) {
+           const typedName = dom.name.value.trim();
+           if (!typedName) dom.name.value = ocrResult.fields.name;
+         }
+
+         if (ocrResult.fields.idCard) {
+           const typedId = dom.idCard.value.trim().toUpperCase();
+           if (!typedId) dom.idCard.value = ocrResult.fields.idCard;
+         }
+
+          // OCR信息与填写信息一致性比对
+          const typedName = dom.name.value.trim();
+          const typedId = dom.idCard.value.trim().toUpperCase();
+          let matchWarnings = [];
+
+          // 比对姓名
+          if (ocrResult.fields.name && typedName && ocrResult.fields.name !== typedName) {
+            matchWarnings.push(`姓名"${ocrResult.fields.name}"≠"${typedName}"`);
+          }
+          // 比对身份证号
+          if (ocrResult.fields.idCard && typedId && ocrResult.fields.idCard !== typedId) {
+            matchWarnings.push(`身份证号"${ocrResult.fields.idCard}"≠"${typedId}"`);
+          }
+          // 比对性别
+          if (ocrResult.fields.gender) {
+            const typedGender = document.querySelector('input[name="gender"]:checked');
+            if (typedGender && ocrResult.fields.gender !== typedGender.value) {
+              matchWarnings.push(`性别"${ocrResult.fields.gender}"≠"${typedGender.value}"`);
+            }
           }
 
-          if (ocrResult.fields.idCard) {
-            const typedId = dom.idCard.value.trim().toUpperCase();
-            if (!typedId) dom.idCard.value = ocrResult.fields.idCard;
+          if (matchWarnings.length > 0) {
+            statusEl.textContent = '⚠️ 信息不匹配: ' + matchWarnings.join('; ');
+            statusEl.style.color = '#ea4335';
+            ocrResults.hasMismatch = true;
+            ocrResults.matchErrors = matchWarnings;
+            showToast('⚠️ 身份证OCR信息与填写不一致，请核对');
+          } else if (ocrResult.fields.name || ocrResult.fields.idCard) {
+            statusEl.textContent = '✅ 身份证信息匹配一致';
+            statusEl.style.color = '#34a853';
+            ocrResults.hasMismatch = false;
+            showToast('✅ 身份证OCR信息与填写一致');
+          } else {
+            statusEl.textContent = '⚠️ 未识别到身份证信息，手动核对即可';
+            statusEl.style.color = '#fbbc04';
           }
-
-          statusEl.textContent = '✅ 身份证识别通过';
-          statusEl.style.color = '#34a853';
-          showToast('✅ 身份证OCR识别完成');
         } else {
           statusEl.textContent = '⚠️ OCR识别失败，手动核对即可';
           statusEl.style.color = '#fbbc04';
@@ -456,6 +489,12 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
 
     if (!dom.street.value) errors.street = '请选择所属街道';
 
+    // 工作单位 + 统一社会信用代码一致性
+    if (dom.workUnit.value.trim() && dom.creditCode.value.trim()) {
+      const ccErr = validateCompanyCreditCode(dom.workUnit.value, dom.creditCode.value);
+      if (ccErr) errors.creditCode = ccErr;
+    }
+
     // ===== 照片存在性检查 =====
     if (!dom.portraitInput.files[0]) errors.portrait = '请上传电子免冠证件照';
     if (!dom.idFrontInput.files[0]) errors.idFront = '请上传身份证正面照片';
@@ -526,16 +565,42 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
       if (dom.idFrontInput.files[0]) {
         showToast('⏳ OCR识别身份证...');
         const idFrontDataUrl = await fileToDataUrl(dom.idFrontInput.files[0]);
-        // 只做OCR，不需要人脸检测
         if (typeof Tesseract !== 'undefined') {
           const ocrResult = await ocrIdCard(idFrontDataUrl, 'front');
-          if (ocrResult.success && ocrResult.fields.idCard) {
-            const typedId = dom.idCard.value.trim().toUpperCase();
-            const ocrId = ocrResult.fields.idCard.toUpperCase();
-            if (typedId && ocrId !== typedId) {
-              showError('idFront', `OCR识别号码"${ocrId}"与填写的"${typedId}"不一致`);
-              dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              showToast(`身份证号不一致，请核对`);
+          if (ocrResult.success) {
+            let mismatch = false;
+            // 身份证号比对
+            if (ocrResult.fields.idCard) {
+              const typedId = dom.idCard.value.trim().toUpperCase();
+              const ocrId = ocrResult.fields.idCard.toUpperCase();
+              if (typedId && ocrId !== typedId) {
+               showError('idFront', `OCR识别号码"${ocrId}"与填写的"${typedId}"不一致`);
+               dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+               showToast(`身份证号不一致，请核对`);
+                mismatch = true;
+              }
+            }
+            // 姓名比对
+            if (!mismatch && ocrResult.fields.name) {
+              const typedName = dom.name.value.trim();
+              if (typedName && ocrResult.fields.name !== typedName) {
+                showError('idFront', `OCR识别姓名"${ocrResult.fields.name}"与填写姓名"${typedName}"不一致`);
+                dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                showToast(`姓名不一致，请核对`);
+                mismatch = true;
+              }
+            }
+            // 性别比对
+            if (!mismatch && ocrResult.fields.gender) {
+              const typedGender = document.querySelector('input[name="gender"]:checked');
+              if (typedGender && ocrResult.fields.gender !== typedGender.value) {
+                showError('idFront', `OCR识别性别"${ocrResult.fields.gender}"与填写不一致`);
+                dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                showToast(`性别不一致，请核对`);
+                mismatch = true;
+              }
+            }
+            if (mismatch) {
               return false;
             }
           }
@@ -811,16 +876,11 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
   // =============================================
 
   function init() {
-    alert('🔄 开始初始化...');
+    console.log('📋 万鑫报名系统 v4 初始化...');
     console.log('📋 万鑫报名系统初始化开始...');
-    console.log('📦 validateName:', typeof validateName === 'function' ? '已定义' : '未定义');
-    console.log('📦 detectPortrait:', typeof detectPortrait === 'function' ? '已定义' : '未定义');
+    // console.log('📦 validateName:', typeof validateName === 'function' ? '已定义' : '未定义');
+    // console.log('📦 detectPortrait:', typeof detectPortrait === 'function' ? '已定义' : '未定义');
 
-    if (!dom.form) { alert('❌ 找不到表单元素 signupForm'); return; }
-    if (!dom.portraitInput) { alert('❌ 找不到 portraitInput'); return; }
-    if (!dom.idFrontInput) { alert('❌ 找不到 idFrontInput'); return; }
-    if (!dom.idBackInput) { alert('❌ 找不到 idBackInput'); return; }
-    if (!dom.submitBtn) { alert('❌ 找不到 submitBtn'); return; }
 
     setupFieldValidation();
     setupRadioStyling();
@@ -829,12 +889,11 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
     dom.form.addEventListener('submit', handleSubmit);
     dom.resetBtn.addEventListener('click', handleResetClick);
 
-    alert('✅ 初始化完成！所有元素已找到，事件已绑定');
 
     dom.modalCloseBtn.addEventListener('click', hideSuccessModal);
     dom.previewCloseBtn.addEventListener('click', hidePreviewModal);
-    dom.successModal.addEventListener('click', e => { if (e.target === this) hideSuccessModal(); });
-    dom.previewModal.addEventListener('click', e => { if (e.target === this) hidePreviewModal(); });
+    dom.successModal.addEventListener('click', e => { if (e.target === dom.successModal) hideSuccessModal(); });
+    dom.previewModal.addEventListener('click', e => { if (e.target === dom.previewModal) hidePreviewModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape') { hideSuccessModal(); hidePreviewModal(); } });
 
     console.log('✅ 万鑫安全培训报名系统（增强版）初始化完成');
