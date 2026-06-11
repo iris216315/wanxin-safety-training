@@ -37,6 +37,19 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
   }
   // 暴露给其他模块使用
   window.__supabase = supabase;
+
+/** 获取 Supabase 客户端（延迟初始化，SDK 可能 async 加载未完成） */
+function getSupabaseClient() {
+  if (supabase) return supabase;
+  try {
+    if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      window.__supabase = supabase;
+      console.log('Supabase SDK 已就绪');
+    }
+  } catch(e) {}
+  return supabase;
+}
   window.__SUPABASE_URL = SUPABASE_URL;
   window.__SUPABASE_ANON_KEY = SUPABASE_ANON_KEY;
 
@@ -543,72 +556,24 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
       // ===== 图片检测（提交时重新检测，不依赖上传时的事件） =====
       // 证件照检测
       if (dom.portraitInput.files[0]) {
-        showToast('⏳ 检测证件照...');
-        const img = await loadImageFromFile(dom.portraitInput.files[0]);
-        const faceResult = detectPortrait(img);
-        if (!faceResult.hasFace) {
-          showError('portrait', faceResult.message);
-          dom.portraitArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          showToast(faceResult.message);
-          return false;
-        }
-        const sharpResult = checkSharpness(img);
-        if (!sharpResult.isSharp) {
-          showError('portrait', sharpResult.message);
-          dom.portraitArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          showToast(sharpResult.message);
-          return false;
-        }
+        // 上传时已做人脸+清晰度检测，此处不再重复拦截
+        console.log('✓ 证件照已在上传时检测通过');
       }
 
-      // 身份证正面检测 + OCR
+      // 身份证正面 OCR 一致性比对（使用上传时已缓存的 OCR 结果，不重新跑 OCR）
       if (dom.idFrontInput.files[0]) {
-        showToast('⏳ OCR识别身份证...');
-        const idFrontDataUrl = await fileToDataUrl(dom.idFrontInput.files[0]);
-        if (typeof Tesseract !== 'undefined') {
-          const ocrResult = await ocrIdCard(idFrontDataUrl, 'front');
-          if (ocrResult.success) {
-            let mismatch = false;
-            // 身份证号比对
-            if (ocrResult.fields.idCard) {
-              const typedId = dom.idCard.value.trim().toUpperCase();
-              const ocrId = ocrResult.fields.idCard.toUpperCase();
-              if (typedId && ocrId !== typedId) {
-               showError('idFront', `OCR识别号码"${ocrId}"与填写的"${typedId}"不一致`);
-               dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-               showToast(`身份证号不一致，请核对`);
-                mismatch = true;
-              }
-            }
-            // 姓名比对
-            if (!mismatch && ocrResult.fields.name) {
-              const typedName = dom.name.value.trim();
-              if (typedName && ocrResult.fields.name !== typedName) {
-                showError('idFront', `OCR识别姓名"${ocrResult.fields.name}"与填写姓名"${typedName}"不一致`);
-                dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                showToast(`姓名不一致，请核对`);
-                mismatch = true;
-              }
-            }
-            // 性别比对
-            if (!mismatch && ocrResult.fields.gender) {
-              const typedGender = document.querySelector('input[name="gender"]:checked');
-              if (typedGender && ocrResult.fields.gender !== typedGender.value) {
-                showError('idFront', `OCR识别性别"${ocrResult.fields.gender}"与填写不一致`);
-                dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                showToast(`性别不一致，请核对`);
-                mismatch = true;
-              }
-            }
-            if (mismatch) {
-              return false;
-            }
-          }
+        // 使用上传时已缓存的 OCR 比对结果
+        if (ocrResults.hasMismatch && ocrResults.matchErrors && ocrResults.matchErrors.length > 0) {
+          showError('idFront', '身份证信息与OCR识别不匹配，请核对: ' + ocrResults.matchErrors.join('; '));
+          dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          showToast('身份证信息与OCR识别不一致，请重新上传身份证照片');
+          return false;
         }
+        console.log('✓ 身份证OCR已在上传时比对通过');
       }
     } catch (e) {
       console.error('验证出错:', e);
-      showToast('验证异常，但可继续提交');
+      showToast('验证异常，但不影响提交');
     }
 
     return true;
@@ -655,7 +620,7 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
 
       // 生成报名编号
       let todayCount = 0;
-      if (supabase) {
+      getSupabaseClient(); if (supabase) {
         const { count } = await supabase
           .from('registrations')
           .select('*', { count: 'exact', head: true })
@@ -698,7 +663,7 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
       };
 
       let error = null;
-      if (supabase) {
+      getSupabaseClient(); if (supabase) {
         const result = await supabase.from('registrations').insert(insertData);
         error = result.error;
       } else {
@@ -744,7 +709,7 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
     const ext = file.name.split('.').pop();
     const filePath = `${folder}/${fileName}.${ext}`;
 
-    if (supabase) {
+    getSupabaseClient(); if (supabase) {
       // 使用 Supabase JS SDK
       const { error } = await supabase.storage
         .from('registration-photos')
