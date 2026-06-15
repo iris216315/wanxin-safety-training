@@ -400,59 +400,143 @@
   // =============================================
 
   $('exportBtn').addEventListener('click', async function () {
-    this.disabled = true; this.textContent = '导出中...';
+    const btn = this;
+    btn.disabled = true; btn.textContent = '正在获取数据...';
     try {
       let filter = '';
       if (searchQuery) {
         filter = `&or=(name.ilike.*${encodeURIComponent(searchQuery)}*,id_card.ilike.*${encodeURIComponent(searchQuery)}*,phone.ilike.*${encodeURIComponent(searchQuery)}*,work_unit.ilike.*${encodeURIComponent(searchQuery)}*)`;
       }
       const rows = await sbGet(`registrations?select=*${filter}&order=created_at.desc`) || [];
-      const xlsData = rows.map(r => ({
-        '序号': null,
-        '报名编号': r.registration_no || '',
-        '姓名': r.name || '',
-        '性别': r.gender || '',
-        '学历': r.education || '',
-        '人员类型': r.person_type || '',
-        '身份证号': r.id_card || '',
-        '工作单位': r.work_unit || '',
-        '信用代码': r.credit_code || '',
-        '手机号': r.phone || '',
-        '所属街道': r.street || '',
-        '证件照': r.portrait_url || '',
-        '身份证正面': r.id_front_url || '',
-        '身份证反面': r.id_back_url || '',
-        '状态': r.status || '',
-        '提交时间': fmtDt(r.submit_time),
-        '创建时间': fmtDt(r.created_at),
-      }));
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.json_to_sheet(xlsData);
-      // 设置列宽
-      ws['!cols'] = [
-        {wch:4}, // 序号
-        {wch:14}, // 报名编号
-        {wch:10}, // 姓名
-        {wch:6}, // 性别
-        {wch:10}, // 学历
-        {wch:14}, // 人员类型
-        {wch:20}, // 身份证号
-        {wch:30}, // 工作单位
-        {wch:22}, // 信用代码
-        {wch:13}, // 手机号
-        {wch:12}, // 所属街道
-        {wch:50}, // 证件照(URL)
-        {wch:50}, // 身份证正面(URL)
-        {wch:50}, // 身份证反面(URL)
-        {wch:8}, // 状态
-        {wch:18}, // 提交时间
-        {wch:18}, // 创建时间
+
+      if (rows.length === 0) { showToast('没有可导出的数据'); btn.disabled = false; btn.textContent = '📥 导出 Excel'; return; }
+
+      // 使用 ExcelJS 创建含图片的 Excel
+      const wb = new ExcelJS.Workbook();
+      wb.creator = '万鑫安全培训报名系统';
+      wb.created = new Date();
+      const ws = wb.addWorksheet('报名记录');
+
+      // 列定义
+      const COL = {
+        idx: 1, regNo: 2, name: 3, gender: 4, edu: 5, ptype: 6,
+        idCard: 7, workUnit: 8, creditCode: 9, phone: 10, street: 11,
+        portrait: 12, idFront: 13, idBack: 14, status: 15, submit: 16, created: 17
+      };
+      ws.columns = [
+        { header: '序号', key: 'idx', width: 5 },
+        { header: '报名编号', key: 'regNo', width: 16 },
+        { header: '姓名', key: 'name', width: 10 },
+        { header: '性别', key: 'gender', width: 6 },
+        { header: '学历', key: 'edu', width: 10 },
+        { header: '人员类型', key: 'ptype', width: 14 },
+        { header: '身份证号', key: 'idCard', width: 20 },
+        { header: '工作单位', key: 'workUnit', width: 30 },
+        { header: '信用代码', key: 'creditCode', width: 22 },
+        { header: '手机号', key: 'phone', width: 14 },
+        { header: '所属街道', key: 'street', width: 12 },
+        { header: '证件照', key: 'portrait', width: 14 },
+        { header: '身份证正面', key: 'idFront', width: 14 },
+        { header: '身份证反面', key: 'idBack', width: 14 },
+        { header: '状态', key: 'status', width: 8 },
+        { header: '提交时间', key: 'submitTime', width: 18 },
+        { header: '创建时间', key: 'createdAt', width: 18 },
       ];
-      XLSX.utils.book_append_sheet(wb, ws, '报名记录');
-      XLSX.writeFile(wb, `万鑫安全报名_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.xlsx`);
-      showToast(`导出 ${xlsData.length} 条`);
-    } catch (e) { showToast('导出失败'); }
-    finally { this.disabled = false; this.textContent = '📥 导出 Excel'; }
+
+      // 表头样式
+      const hRow = ws.getRow(1);
+      hRow.height = 22;
+      hRow.eachCell(c => {
+        c.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } };
+        c.alignment = { horizontal: 'center', vertical: 'middle' };
+        c.border = {
+          top: { style: 'thin' }, bottom: { style: 'thin' },
+          left: { style: 'thin' }, right: { style: 'thin' },
+        };
+      });
+
+      // 逐行写入数据 + 嵌入图片
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        const imgKey = `progress_${Date.now()}`;
+        btn.textContent = `正在处理第 ${i + 1}/${rows.length} 条...`;
+
+        const row = ws.addRow({
+          idx: i + 1,
+          regNo: r.registration_no || '',
+          name: r.name || '',
+          gender: r.gender || '',
+          edu: r.education || '',
+          ptype: r.person_type || '',
+          idCard: r.id_card || '',
+          workUnit: r.work_unit || '',
+          creditCode: r.credit_code || '',
+          phone: r.phone || '',
+          street: r.street || '',
+          portrait: '',
+          idFront: '',
+          idBack: '',
+          status: r.status || '',
+          submitTime: fmtDt(r.submit_time),
+          createdAt: fmtDt(r.created_at),
+        });
+
+        row.height = 95;
+        row.alignment = { vertical: 'middle', horizontal: 'center' };
+
+        // 下载并嵌入图片
+        const imageItems = [
+          { url: r.portrait_url, col: COL.portrait, label: '证件照' },
+          { url: r.id_front_url, col: COL.idFront, label: '身份证正面' },
+          { url: r.id_back_url, col: COL.idBack, label: '身份证反面' },
+        ];
+
+        for (const item of imageItems) {
+          if (!item.url) continue;
+          try {
+            const resp = await fetch(item.url);
+            if (!resp.ok) continue;
+            const buf = await resp.arrayBuffer();
+            const ext = item.url.match(/\.(jpg|jpeg|png|webp)/i)?.[1]?.toLowerCase() || 'jpeg';
+            const imgId = wb.addImage({
+              buffer: buf,
+              extension: ext === 'png' ? 'png' : ext === 'webp' ? 'jpeg' : 'jpeg',
+            });
+            ws.addImage(imgId, {
+              tl: { col: item.col - 1, row: i + 1 },
+              ext: { width: 85, height: 85 },
+            });
+          } catch(_imgErr) {
+            // 图片下载失败则跳过
+          }
+        }
+
+        // 每10条释放一下事件循环
+        if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
+      }
+
+      // 生成并下载
+      btn.textContent = '正在生成文件...';
+      const outBuf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([outBuf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = dlUrl;
+      a.download = `万鑫安全报名_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(dlUrl), 5000);
+
+      showToast(`导出 ${rows.length} 条，图片已嵌入`);
+    } catch (e) {
+      console.error('导出失败:', e);
+      showToast('导出失败: ' + (e.message || ''));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '📥 导出 Excel';
+    }
   });
 
   // =============================================
