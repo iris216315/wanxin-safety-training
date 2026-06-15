@@ -56,6 +56,36 @@ ALTER TABLE registrations
   ADD COLUMN IF NOT EXISTS reviewed_by TEXT,
   ADD COLUMN IF NOT EXISTS review_note TEXT;
 
+-- =============================================
+-- 修复：为 registrations 表开放匿名用户权限
+-- 注意：在 Supabase SQL 编辑器中运行此 SQL
+-- =============================================
+
+-- 允许匿名用户插入报名记录
+DROP POLICY IF EXISTS "anon_insert_registrations" ON registrations;
+CREATE POLICY "anon_insert_registrations" ON registrations
+  FOR INSERT TO anon
+  WITH CHECK (true);
+
+-- 允许匿名用户查询报名记录（管理员后台使用）
+DROP POLICY IF EXISTS "anon_select_registrations" ON registrations;
+CREATE POLICY "anon_select_registrations" ON registrations
+  FOR SELECT TO anon
+  USING (true);
+
+-- 允许匿名用户更新报名记录（管理员审核使用）
+DROP POLICY IF EXISTS "anon_update_registrations" ON registrations;
+CREATE POLICY "anon_update_registrations" ON registrations
+  FOR UPDATE TO anon
+  USING (true)
+  WITH CHECK (true);
+
+-- 允许匿名用户删除报名记录（管理员删除使用）
+DROP POLICY IF EXISTS "anon_delete_registrations" ON registrations;
+CREATE POLICY "anon_delete_registrations" ON registrations
+  FOR DELETE TO anon
+  USING (true);
+
 -- 6. 启用 RLS
 ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;

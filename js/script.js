@@ -667,10 +667,23 @@ function getSupabaseClient() {
         const result = await supabase.from('registrations').insert(insertData);
         error = result.error;
       } else {
-        await api('POST', 'registrations', insertData);
+        try {
+          await api('POST', 'registrations', insertData);
+        } catch (apiErr) {
+          error = apiErr.message;
+        }
       }
 
-      if (error) throw new Error(typeof error === 'string' ? error : error.message || '保存失败');
+      if (error) {
+        let msg = typeof error === 'string' ? error : error.message || '保存失败';
+        // 检测 RLS 权限错误，给出明确的修复指引
+        if (msg.includes('row-level security') || msg.includes('42501') || msg.includes('permission denied') || msg.includes('violates')) {
+          msg = '⚠️ 数据库权限未开放。请在 Supabase 后台 SQL 编辑器中运行以下 SQL 修复：\n\n' +
+            'ALTER TABLE registrations DISABLE ROW LEVEL SECURITY;\n\n' +
+            '操作步骤：打开 https://supabase.com/dashboard → 进入项目 → SQL Editor → 粘贴运行';
+        }
+        throw new Error(msg);
+      }
 
       console.log(`✅ 报名成功: ${regNo}`);
       showSuccessModal(regNo);
