@@ -408,16 +408,46 @@
       }
       const rows = await sbGet(`registrations?select=*${filter}&order=created_at.desc`) || [];
       const xlsData = rows.map(r => ({
+        '序号': null,
         '报名编号': r.registration_no || '',
-        '姓名': r.name || '', '性别': r.gender || '', '学历': r.education || '',
-        '人员类型': r.person_type || '', '身份证号': r.id_card || '',
-        '工作单位': r.work_unit || '', '信用代码': r.credit_code || '',
-        '手机号': r.phone || '', '所属街道': r.street || '',
-        '状态': r.status || '', '提交时间': fmtDt(r.submit_time),
+        '姓名': r.name || '',
+        '性别': r.gender || '',
+        '学历': r.education || '',
+        '人员类型': r.person_type || '',
+        '身份证号': r.id_card || '',
+        '工作单位': r.work_unit || '',
+        '信用代码': r.credit_code || '',
+        '手机号': r.phone || '',
+        '所属街道': r.street || '',
+        '证件照': r.portrait_url || '',
+        '身份证正面': r.id_front_url || '',
+        '身份证反面': r.id_back_url || '',
+        '状态': r.status || '',
+        '提交时间': fmtDt(r.submit_time),
         '创建时间': fmtDt(r.created_at),
       }));
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.json_to_sheet(xlsData);
+      // 设置列宽
+      ws['!cols'] = [
+        {wch:4}, // 序号
+        {wch:14}, // 报名编号
+        {wch:10}, // 姓名
+        {wch:6}, // 性别
+        {wch:10}, // 学历
+        {wch:14}, // 人员类型
+        {wch:20}, // 身份证号
+        {wch:30}, // 工作单位
+        {wch:22}, // 信用代码
+        {wch:13}, // 手机号
+        {wch:12}, // 所属街道
+        {wch:50}, // 证件照(URL)
+        {wch:50}, // 身份证正面(URL)
+        {wch:50}, // 身份证反面(URL)
+        {wch:8}, // 状态
+        {wch:18}, // 提交时间
+        {wch:18}, // 创建时间
+      ];
       XLSX.utils.book_append_sheet(wb, ws, '报名记录');
       XLSX.writeFile(wb, `万鑫安全报名_${new Date().toLocaleDateString('zh-CN').replace(/\//g,'-')}.xlsx`);
       showToast(`导出 ${xlsData.length} 条`);
