@@ -23,7 +23,7 @@ document.documentElement.setAttribute('data-js-loaded', 'true');
   // Supabase 初始化（防CDN加载失败导致脚本崩溃）
   // =============================================
   const SUPABASE_URL = 'https://isgzgscaljosdsxatclo.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_Bd3-2QXZ9doG_-6fzkAfeg_TzXSiCiV';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzZ3pnc2NhbGpvc2RzeGF0Y2xvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDkwOTQ1MSwiZXhwIjoyMDk2NDg1NDUxfQ.xr2x_yzMk7sjfTzINsM0lkCY36MWoveMYlEGqO-9h9I';
 
   let supabase = null;
   try {
