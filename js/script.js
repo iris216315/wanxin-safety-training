@@ -556,17 +556,51 @@ function getSupabaseClient() {
       // ===== 图片检测（提交时重新检测，不依赖上传时的事件） =====
       // 证件照检测
       if (dom.portraitInput.files[0]) {
-        // 上传时已做人脸+清晰度检测，此处不再重复拦截
-        console.log('✓ 证件照已在上传时检测通过');
+        showToast('⏳ 检测证件照...');
+        const img = await loadImageFromFile(dom.portraitInput.files[0]);
+        const faceResult = detectPortrait(img);
+        if (!faceResult.hasFace) {
+          showError('portrait', faceResult.message);
+          dom.portraitArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          showToast(faceResult.message);
+          return false;
+        }
+        const sharpResult = checkSharpness(img);
+        if (!sharpResult.isSharp) {
+          showError('portrait', sharpResult.message);
+          dom.portraitArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          showToast(sharpResult.message);
+          return false;
+        }
       }
 
-      // 身份证正面 OCR 一致性比对（使用上传时已缓存的 OCR 结果，不重新跑 OCR）
+      // 身份证正面 OCR 一致性比对（使用上传时缓存的 OCR 结果）
       if (dom.idFrontInput.files[0]) {
-        // 使用上传时已缓存的 OCR 比对结果
+        // 检查上传时是否已发现 mismatch
         if (ocrResults.hasMismatch && ocrResults.matchErrors && ocrResults.matchErrors.length > 0) {
           showError('idFront', '身份证信息与OCR识别不匹配，请核对: ' + ocrResults.matchErrors.join('; '));
           dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
           showToast('身份证信息与OCR识别不一致，请重新上传身份证照片');
+          return false;
+        }
+        // 额外校验：即使上传时没有 mismatch（可能因为当时表单字段为空），提交时再比对一次
+        let submitMatchErrors = [];
+        if (ocrResults.ocrName) {
+          const typedName = dom.name.value.trim();
+          if (typedName && ocrResults.ocrName !== typedName) {
+            submitMatchErrors.push(`姓名"${ocrResults.ocrName}"≠"${typedName}"`);
+          }
+        }
+        if (ocrResults.idCard) {
+          const typedId = dom.idCard.value.trim().toUpperCase();
+          if (typedId && ocrResults.idCard !== typedId) {
+            submitMatchErrors.push(`身份证号"${ocrResults.idCard}"≠"${typedId}"`);
+          }
+        }
+        if (submitMatchErrors.length > 0) {
+          showError('idFront', '身份证OCR信息与填写不一致: ' + submitMatchErrors.join('; '));
+          dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          showToast('身份证信息与填写不一致，请核对');
           return false;
         }
         console.log('✓ 身份证OCR已在上传时比对通过');

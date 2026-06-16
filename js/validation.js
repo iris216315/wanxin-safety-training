@@ -95,6 +95,10 @@ function validateCompanyCreditCode(company, creditCode) {
   if (!c) return '请输入工作单位';
   if (!cc) return '请输入统一社会信用代码';
   if (c.length < 2) return '工作单位名称过短';
+  // 单位名称必须包含中文
+  if (!/[\u4e00-\u9fa5]/.test(c)) return '工作单位必须包含中文名称';
+  // 单位名称和信用代码不能相同（防止填错字段）
+  if (c === cc || c.replace(/[^0-9A-Za-z]/g, '') === cc) return '工作单位和信用代码不能相同，请检查是否填错字段';
   // 统一社会信用代码格式校验
   const creditErr = validateCreditCode(cc);
   if (creditErr) return creditErr;
@@ -110,7 +114,7 @@ function sbApiUrl() {
 }
 
 function sbApiKey() {
-  return window.__SUPABASE_ANON_KEY || 'sb_publishable_Bd3-2QXZ9doG_-6fzkAfeg_TzXSiCiV';
+  return window.__SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlzZ3pnc2NhbGpvc2RzeGF0Y2xvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MDkwOTQ1MSwiZXhwIjoyMDk2NDg1NDUxfQ.xr2x_yzMk7sjfTzINsM0lkCY36MWoveMYlEGqO-9h9I';
 }
 
 function sbApiHeaders() {
