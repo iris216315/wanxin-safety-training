@@ -297,9 +297,14 @@ function getSupabaseClient() {
       const faceResult = detectPortrait(img);
       console.log('人像检测结果:', faceResult);
       if (!faceResult.hasFace) {
-        showError(cfg.errorKey, faceResult.message);
-        statusEl.textContent = '❌ ' + faceResult.message;
-        return;
+        if (faceResult.error) {
+          statusEl.textContent = '⚠️ ' + faceResult.message;
+          statusEl.style.color = '#fbbc04';
+        } else {
+          showError(cfg.errorKey, faceResult.message);
+          statusEl.textContent = '❌ ' + faceResult.message;
+          return;
+        }
       }
 
       // 2. 清晰度检测
@@ -342,9 +347,12 @@ function getSupabaseClient() {
       await sleep(100);
       const sharpResult = checkSharpness(img);
       if (!sharpResult.isSharp) {
-        showError(cfg.errorKey, sharpResult.message);
-        statusEl.textContent = '❌ ' + sharpResult.message;
-        return;
+        if (sharpResult.error) {
+          statusEl.textContent = '⚠️ 清晰度检测不可用，继续识别...';
+        } else {
+          statusEl.textContent = '⚠️ 清晰度不佳，继续OCR识别...';
+        }
+        statusEl.style.color = '#fbbc04';
       }
 
       // 2. OCR 识别
@@ -559,14 +567,18 @@ function getSupabaseClient() {
         showToast('⏳ 检测证件照...');
         const img = await loadImageFromFile(dom.portraitInput.files[0]);
         const faceResult = detectPortrait(img);
-        if (!faceResult.hasFace) {
+        if (faceResult.error) {
+          console.warn('人脸检测不可用:', faceResult.message);
+        } else if (!faceResult.hasFace) {
           showError('portrait', faceResult.message);
           dom.portraitArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
           showToast(faceResult.message);
           return false;
         }
         const sharpResult = checkSharpness(img);
-        if (!sharpResult.isSharp) {
+        if (sharpResult.error) {
+          console.warn('清晰度检测不可用');
+        } else if (!sharpResult.isSharp) {
           showError('portrait', sharpResult.message);
           dom.portraitArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
           showToast(sharpResult.message);
@@ -602,6 +614,10 @@ function getSupabaseClient() {
           dom.idFrontArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
           showToast('身份证信息与填写不一致，请核对');
           return false;
+        }
+        // 如果完全没有OCR数据（Tesseract未加载/失败），给警告但不拦截
+        if (!ocrResults.idCard && !ocrResults.ocrName) {
+          console.warn('⚠️ OCR未获取到数据（Tesseract可能未加载）');
         }
         console.log('✓ 身份证OCR已在上传时比对通过');
       }

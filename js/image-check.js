@@ -78,7 +78,7 @@ function detectPortrait(imgEl) {
     return { hasFace: true, message: '' };
   } catch (e) {
     console.warn('人像检测出错:', e);
-    return { hasFace: true, message: '' };
+    return { hasFace: false, message: "人脸检测不可用", error: true };
   }
 }
 
@@ -147,7 +147,7 @@ function checkSharpness(imgEl) {
     return { isSharp: true, score: Math.round(variance), message: '' };
   } catch (e) {
     console.warn('清晰度检测出错:', e);
-    return { isSharp: true, score: 100, message: '' };
+    return { isSharp: true, score: 100, message: "", error: true };
   }
 }
 
