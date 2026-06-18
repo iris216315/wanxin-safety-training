@@ -215,7 +215,7 @@ function getSupabaseClient() {
       // 点击预览图放大
       cfg.imageEl.addEventListener('click', function (e) {
         e.stopPropagation();
-        if (this.src && this.src.startsWith('data:')) {
+        if (this.src && (this.src.startsWith('data:') || this.src.startsWith('blob:'))) {
           dom.previewImage.src = this.src;
           dom.previewModal.classList.add('show');
         }
@@ -233,27 +233,37 @@ function getSupabaseClient() {
     showError(cfg.errorKey, '');
     uploadedFiles[cfg.errorKey === 'portrait' ? 'portrait' : cfg.errorKey === 'idFront' ? 'idFront' : 'idBack'] = file;
 
+    // 先用 createObjectURL 快速显示预览（iOS 上比 readAsDataURL 快得多，且支持 HEIC）
+    const previewUrl = URL.createObjectURL(file);
+    cfg.imageEl.src = previewUrl;
+    cfg.previewEl.style.display = 'flex';
+    cfg.placeholderEl.style.display = 'none';
+    cfg.areaEl.classList.add('has-file');
+
+    // 后台用 FileReader 读取数据给检测/OCR
     const reader = new FileReader();
     reader.onload = async function (e) {
       const dataUrl = e.target.result;
-      cfg.imageEl.src = dataUrl;
-      cfg.previewEl.style.display = 'flex';
-      cfg.placeholderEl.style.display = 'none';
-      cfg.areaEl.classList.add('has-file');
 
-      // 执行图片检测
       if (cfg.isPortrait) {
         await runPortraitChecks(cfg, dataUrl);
       } else if (cfg.side === 'front') {
         await runIdFrontChecks(cfg, dataUrl);
       }
     };
-    reader.onerror = function () { showError(cfg.errorKey, '图片读取失败，请重新上传'); };
+    reader.onerror = function () { 
+      // iOS 上 HEIC 图片可能读取失败，跳过检测，不影响提交
+      console.warn('FileReader 读取失败，跳过图片检测');
+    };
     reader.readAsDataURL(file);
   }
 
   function resetUpload(cfg) {
     cfg.inputEl.value = '';
+    // 释放之前创建的 ObjectURL
+    if (cfg.imageEl.src && cfg.imageEl.src.startsWith('blob:')) {
+      URL.revokeObjectURL(cfg.imageEl.src);
+    }
     cfg.imageEl.src = '';
     cfg.previewEl.style.display = 'none';
     cfg.placeholderEl.style.display = 'flex';
@@ -281,7 +291,11 @@ function getSupabaseClient() {
     try {
       const img = new Image();
       img.src = dataUrl;
-      await new Promise(resolve => { img.onload = resolve; });
+      // iOS HEIC 图片解码可能超时，加 15 秒超时保护
+      await Promise.race([
+        new Promise(resolve => { img.onload = resolve; }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Image decode timeout')), 15000))
+      ]);
 
       // 显示检测状态
       const statusEl = document.createElement('div');
@@ -333,7 +347,11 @@ function getSupabaseClient() {
     try {
       const img = new Image();
       img.src = dataUrl;
-      await new Promise(resolve => { img.onload = resolve; });
+      // iOS HEIC 图片解码可能超时，加 15 秒超时保护
+      await Promise.race([
+        new Promise(resolve => { img.onload = resolve; }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Image decode timeout')), 15000))
+      ]);
 
       const statusEl = document.createElement('div');
       statusEl.className = 'check-status';
