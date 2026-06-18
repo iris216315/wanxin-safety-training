@@ -268,7 +268,7 @@ function getSupabaseClient() {
 
   function validateImageFile(file, label) {
     if (!file) return `请上传${label}`;
-    if (!['image/jpeg', 'image/png'].includes(file.type)) return '仅支持 JPG/PNG 格式';
+    if (file.type && !file.type.startsWith('image/')) return '请上传图片文件';
     if (file.size > 10 * 1024 * 1024) return '图片大小不能超过 10MB';
     return '';
   }

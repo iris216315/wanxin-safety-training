@@ -22,7 +22,9 @@ function detectPortrait(imgEl) {
   try {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    const w = 150; // 缩小加速
+    if (!ctx) throw new Error('Canvas not available');
+
+    const w = 150;
     const h = Math.round((w / imgEl.naturalWidth) * imgEl.naturalHeight);
     canvas.width = w;
     canvas.height = h;
@@ -31,47 +33,49 @@ function detectPortrait(imgEl) {
     const imageData = ctx.getImageData(0, 0, w, h);
     const data = imageData.data;
 
-    // 1. 检查分辨率（证件照至少 300x400）
+    // 1. 检查分辨率
     if (imgEl.naturalWidth < 100 || imgEl.naturalHeight < 100) {
       return { hasFace: false, message: '照片分辨率太低，请上传更清晰的图片' };
     }
 
-    // 2. 检查宽高比（人像通常是 3:4 至 2:3 左右）
+    // 2. 检查宽高比
     const ratio = imgEl.naturalWidth / imgEl.naturalHeight;
     if (ratio < 0.2 || ratio > 3.0) {
       return { hasFace: false, message: '照片比例异常，请上传正常的人像照' };
     }
 
-    // 3. 粗略皮肤检测 - 在画面中央区域采样
-    const cx = Math.round(w / 2);
-    const cy = Math.round(h / 2);
-    const sampleW = Math.round(w * 0.6);
-    const sampleH = Math.round(h * 0.5);
-    const startX = cx - Math.round(sampleW / 2);
-    const startY = cy - Math.round(sampleH / 2);
+    // 3. 分析画面中央区域（人脸位置）
+    const sx = Math.round(w * 0.25), ex = Math.round(w * 0.75);
+    const sy = Math.round(h * 0.15), ey = Math.round(h * 0.85);
 
-    let skinPixels = 0;
-    let totalPixels = 0;
+    let sumGray = 0, sumSqGray = 0, warmPixels = 0, count = 0;
 
-    for (let y = startY; y < startY + sampleH && y < h; y++) {
-      for (let x = startX; x < startX + sampleW && x < w; x++) {
+    for (let y = sy; y < ey && y < h; y++) {
+      for (let x = sx; x < ex && x < w; x++) {
         const idx = (y * w + x) * 4;
-        const r = data[idx];
-        const g = data[idx + 1];
-        const b = data[idx + 2];
-
-        // 简单皮肤色判定：R > 60, G > 40, B > 20, R > G, R > B
-        // 且 R - G > 5 （偏红）
-        if (r > 50 && g > 30 && b > 15 && r > g && r > b && (r - g) > 3) {
-          skinPixels++;
-        }
-        totalPixels++;
+        const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+        sumGray += gray;
+        sumSqGray += gray * gray;
+        // 暖色调像素（皮肤偏红）：R > G + 3
+        if (r > g + 3) warmPixels++;
+        count++;
       }
     }
 
-    const skinRatio = skinPixels / totalPixels;
+    if (count === 0) return { hasFace: true, message: '' };
 
-    if (skinRatio < 0.003) {
+    const meanGray = sumGray / count;
+    const variance = sumSqGray / count - meanGray * meanGray;
+    const warmRatio = warmPixels / count;
+
+    // 画面必须有足够的亮暗变化（不是纯色背景/空白照）
+    if (variance < 20) {
+      return { hasFace: false, message: '照片过于均匀，请上传人像照片' };
+    }
+
+    // 必须有足够的暖色调像素（人脸皮肤呈暖色）
+    if (warmRatio < 0.03) {
       return { hasFace: false, message: '未检测到人像特征，请上传正面人像照片' };
     }
 
