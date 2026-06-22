@@ -197,18 +197,13 @@ function getSupabaseClient() {
         }
       });
 
-      // 点击区域触发文件选择
-      cfg.areaEl.addEventListener('click', function (e) {
-        if (e.target.closest('.upload-replace, .upload-preview')) return;
-        cfg.inputEl.click();
-      });
-
       // 重新上传
       if (cfg.replaceEl) {
         cfg.replaceEl.addEventListener('click', function (e) {
           e.stopPropagation();
-          resetUpload(cfg);
-          setTimeout(() => cfg.inputEl.click(), 100);
+          // iOS 上先打开文件选择器（仍在用户手势中），再重置
+          cfg.inputEl.click();
+          setTimeout(() => resetUpload(cfg), 50);
         });
       }
 
@@ -224,8 +219,9 @@ function getSupabaseClient() {
   }
 
   function handleFileSelect(input, cfg) {
+    try {
     const file = input.files[0];
-    if (!file) return;
+    if (!file) { console.warn('未选择文件'); return; }
 
     const err = validateImageFile(file, cfg.label);
     if (err) { showError(cfg.errorKey, err); input.value = ''; return; }
@@ -256,10 +252,15 @@ function getSupabaseClient() {
       console.warn('FileReader 读取失败，跳过图片检测');
     };
     reader.readAsDataURL(file);
+    } catch (e) {
+      console.error('文件处理出错:', e);
+      showError(cfg.errorKey, '文件处理失败，请重试');
+    }
   }
 
   function resetUpload(cfg) {
     cfg.inputEl.value = '';
+    cfg.inputEl.disabled = false;
     // 释放之前创建的 ObjectURL
     if (cfg.imageEl.src && cfg.imageEl.src.startsWith('blob:')) {
       URL.revokeObjectURL(cfg.imageEl.src);
